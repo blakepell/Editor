@@ -1,91 +1,99 @@
+/*
+ * @project  : ApexGate Editor
+ * @website  : https://www.apexgate.net
+ * @license  : MIT
+ */
+
 using System.Text;
 
-namespace Nano;
-
-internal static class EditorApp
+namespace Editor
 {
-    public static int Run(string[] args)
+    internal static class EditorApp
     {
-        Console.OutputEncoding = Encoding.UTF8;
-        Console.InputEncoding = Encoding.UTF8;
-
-        if (args.Any(a => a is "-h" or "--help"))
+        public static int Run(string[] args)
         {
-            Console.WriteLine("Usage: nano-cs [--readonly] [--linenumbers] [--softwrap] [+LINE[,COLUMN]] [FILE]");
-            return 0;
-        }
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.InputEncoding = Encoding.UTF8;
 
-        if (args.Any(a => a is "-V" or "--version"))
-        {
-            Console.WriteLine("Nano.cs 0.1");
-            return 0;
-        }
-
-        var options = new EditorOptions();
-        string? fileName = null;
-        int startLine = 1;
-        int startColumn = 1;
-
-        foreach (string arg in args)
-        {
-            if (arg is "--readonly" or "-v")
+            if (args.Any(a => a is "-h" or "--help"))
             {
-                options.ReadOnly = true;
+                Console.WriteLine($"{Program.AppName} {Program.Version}");
+                Console.WriteLine("Usage: ae [--readonly] [--linenumbers] [--softwrap] [+LINE[,COLUMN]] [FILE]");
+                return 0;
             }
-            else if (arg is "--linenumbers" or "-l")
+
+            if (args.Any(a => a is "-V" or "--version"))
             {
-                options.LineNumbers = true;
+                Console.WriteLine($"{Program.AppName} {Program.Version}");
+                return 0;
             }
-            else if (arg is "--softwrap")
+
+            var options = new EditorOptions();
+            string? fileName = null;
+            int startLine = 1;
+            int startColumn = 1;
+
+            foreach (string arg in args)
             {
-                options.SoftWrap = true;
+                if (arg is "--readonly" or "-v")
+                {
+                    options.ReadOnly = true;
+                }
+                else if (arg is "--linenumbers" or "-l")
+                {
+                    options.LineNumbers = true;
+                }
+                else if (arg is "--softwrap")
+                {
+                    options.SoftWrap = true;
+                }
+                else if (arg.StartsWith('+') && arg.Length > 1)
+                {
+                    ParseStartPosition(arg[1..], ref startLine, ref startColumn);
+                }
+                else if (!arg.StartsWith('-') && fileName is null)
+                {
+                    fileName = arg;
+                }
             }
-            else if (arg.StartsWith('+') && arg.Length > 1)
+
+            using var console = new AnsiConsoleDriver();
+            var session = new EditorSession(DocumentBuffer.Load(fileName, options), options, console);
+            session.MoveTo(Math.Max(0, startLine - 1), Math.Max(0, startColumn - 1));
+
+            var editor = new EditorLoop(session, new Renderer(console));
+
+            try
             {
-                ParseStartPosition(arg[1..], ref startLine, ref startColumn);
+                console.EnterEditorMode();
+                editor.Run();
+                return 0;
             }
-            else if (!arg.StartsWith('-') && fileName is null)
+            catch (Exception ex)
             {
-                fileName = arg;
+                console.LeaveEditorMode();
+                Console.Error.WriteLine(ex);
+                return 1;
+            }
+            finally
+            {
+                console.LeaveEditorMode();
             }
         }
 
-        using var console = new AnsiConsoleDriver();
-        var session = new EditorSession(DocumentBuffer.Load(fileName, options), options, console);
-        session.MoveTo(Math.Max(0, startLine - 1), Math.Max(0, startColumn - 1));
-
-        var editor = new EditorLoop(session, new Renderer(console));
-
-        try
+        private static void ParseStartPosition(string value, ref int line, ref int column)
         {
-            console.EnterEditorMode();
-            editor.Run();
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            console.LeaveEditorMode();
-            Console.Error.WriteLine(ex);
-            return 1;
-        }
-        finally
-        {
-            console.LeaveEditorMode();
-        }
-    }
+            string[] pieces = value.Split(',', ':');
 
-    private static void ParseStartPosition(string value, ref int line, ref int column)
-    {
-        string[] pieces = value.Split(',', ':');
+            if (pieces.Length > 0 && int.TryParse(pieces[0], out int parsedLine) && parsedLine > 0)
+            {
+                line = parsedLine;
+            }
 
-        if (pieces.Length > 0 && int.TryParse(pieces[0], out int parsedLine) && parsedLine > 0)
-        {
-            line = parsedLine;
-        }
-
-        if (pieces.Length > 1 && int.TryParse(pieces[1], out int parsedColumn) && parsedColumn > 0)
-        {
-            column = parsedColumn;
+            if (pieces.Length > 1 && int.TryParse(pieces[1], out int parsedColumn) && parsedColumn > 0)
+            {
+                column = parsedColumn;
+            }
         }
     }
 }

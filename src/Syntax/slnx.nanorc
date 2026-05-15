@@ -1,0 +1,31 @@
+## Syntax highlighting for Visual Studio XML solution files (.slnx)
+
+syntax "SolutionXml" "\.slnx$"
+
+## Base: all text white
+color white "^.+$"
+
+## Full tag ranges (multiline)
+color green start="<" end=">"
+
+## Tag names (overrides green on the name portion)
+color cyan "</?[A-Za-z][A-Za-z0-9._:-]*"
+color cyan "/?>"
+
+## Known slnx element names (overrides cyan)
+color brightgreen "\<(Solution|Project|Folder|Properties)\>"
+
+## Attribute values in double quotes
+color yellow ""(\\.|[^"])*""
+
+## Known slnx attributes
+color brightcyan "[[:space:]](Path|Name|Id|Type|Configuration|Platform)="
+
+## XML processing instruction
+color brightblue start="<\?" end="\?>"
+
+## XML comments (last — overrides everything else)
+color yellow start="<!--" end="-->"
+
+## Trailing whitespace
+color ,green "[[:space:]]+$"

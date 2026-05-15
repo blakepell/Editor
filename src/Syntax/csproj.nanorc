@@ -1,0 +1,38 @@
+## Syntax highlighting for MSBuild project files
+## Covers: .csproj, .vbproj, .fsproj, .props, .targets, .proj
+
+syntax "MSBuild" "\.(csproj|vbproj|fsproj|props|targets|proj)$"
+
+## Base: all text white
+color white "^.+$"
+
+## Full tag ranges (multiline)
+color green start="<" end=">"
+
+## Tag names (overrides green on the name portion)
+color cyan "</?[A-Za-z][A-Za-z0-9._:-]*"
+color cyan "/?>"
+
+## Attribute values in double quotes
+color yellow ""(\\.|[^"])*""
+
+## Well-known MSBuild attributes
+color brightcyan "[[:space:]](Sdk|Condition|Include|Exclude|Remove|Update|DependsOnTargets|BeforeTargets|AfterTargets|Name|Version|TargetFramework|TargetFrameworks|OutputType|Nullable|ImplicitUsings|AssemblyName|RootNamespace|PackageId|PackageVersion|Authors|Description|RepositoryUrl|LangVersion|AllowUnsafeBlocks|DefineConstants|Configurations|LogicalName|PrivateAssets|IncludeAssets|GeneratePackageOnBuild|PublishAot|InvariantGlobalization|RuntimeIdentifier|SelfContained)="
+
+## MSBuild property references $(...)
+color brightmagenta "\$\([^)]+\)"
+
+## MSBuild item references @(...)
+color magenta "@\([^)]+\)"
+
+## MSBuild metadata references %(...)
+color magenta "%\([^)]+\)"
+
+## XML processing instruction
+color brightblue start="<\?" end="\?>"
+
+## XML comments (last — overrides everything else)
+color yellow start="<!--" end="-->"
+
+## Trailing whitespace
+color ,green "[[:space:]]+$"

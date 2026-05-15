@@ -1,0 +1,27 @@
+## Syntax highlighting for Visual Studio solution files (.sln)
+
+syntax "Solution" "\.sln$"
+
+## File header line
+color brightwhite "^Microsoft Visual Studio Solution File.*$"
+
+## Comment lines (# Visual Studio Version N)
+color brightblue "^#.*$"
+
+## Keywords
+color brightgreen "\<(Project|EndProject|Global|EndGlobal|GlobalSection|EndGlobalSection|ProjectSection|EndProjectSection)\>"
+
+## GUIDs
+color brightcyan "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}"
+
+## Quoted strings (project names and paths)
+color yellow ""(\\.|[^"])*""
+
+## Top-level version assignments (e.g., VisualStudioVersion = 17.x.x.x)
+color cyan "^[A-Za-z][A-Za-z0-9]* = [0-9]"
+
+## Build configuration platforms (e.g., Debug|Any CPU, Release|Any CPU)
+color magenta "(Debug|Release)\|[A-Za-z0-9 ]+"
+
+## Trailing whitespace
+color ,green "[[:space:]]+$"
