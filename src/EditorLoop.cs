@@ -92,9 +92,13 @@ namespace Editor
             {
                 _session.Tab();
             }
-            else if (IsCtrl(key, 'G'))
+            else if (key.Key is ConsoleKey.F12)
             {
                 ShowHelp();
+            }
+            else if (IsCtrl(key, 'G'))
+            {
+                InsertGuid();
             }
             else if (IsCtrl(key, 'X'))
             {
@@ -267,6 +271,12 @@ namespace Editor
             }
         }
 
+        private void InsertGuid()
+        {
+            _session.EndTypingGroup();
+            _session.InsertText(Guid.NewGuid().ToString());
+        }
+
         private void ShowHelp()
         {
             _session.EndTypingGroup();
@@ -277,6 +287,7 @@ namespace Editor
                 "^X Exit       ^O Write Out   ^R Read File   ^W Where Is",
                 "^\\ Replace    ^K Cut         ^U Paste       ^6 Mark",
                 "M-6 Copy      M-U Undo       M-E Redo       ^_ Go To Line",
+                "^G Insert GUID at cursor.",
                 "^L toggles line numbers.",
                 "Ctrl+Home moves to the first line.  Ctrl+End moves to the last line.",
                 "",

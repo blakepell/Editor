@@ -164,7 +164,7 @@ namespace Editor
         {
             (string Key, string Text)[][] rows =
             [
-                [("^G", "Help"), ("^X", "Exit"), ("^O", "Write Out"), ("^R", "Read File"), ("^W", "Where Is"), ("^\\", "Replace")],
+                [("F12", "Help"), ("^X", "Exit"), ("^O", "Write Out"), ("^R", "Read File"), ("^W", "Where Is"), ("^\\", "Replace")],
                 [("^K", "Cut"), ("^U", "Paste"), ("^6", "Mark"), ("M-6", "Copy"), ("M-U", "Undo"), ("M-E", "Redo")]
             ];
 
