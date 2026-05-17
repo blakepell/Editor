@@ -11,7 +11,7 @@ namespace NEdit.Editor
     internal readonly record struct ConsoleStyle(ConsoleColor Foreground, ConsoleColor Background, bool Inverse = false)
     {
         public static readonly ConsoleStyle Normal = new(ConsoleColor.Gray, ConsoleColor.Black);
-        public static readonly ConsoleStyle Title = new(ConsoleColor.Black, ConsoleColor.Gray);
+        public static readonly ConsoleStyle Title = new(ConsoleColor.White, ConsoleColor.DarkBlue);
         public static readonly ConsoleStyle Status = new(ConsoleColor.White, ConsoleColor.DarkBlue);
         public static readonly ConsoleStyle ShortcutKey = new(ConsoleColor.Black, ConsoleColor.Gray);
         public static readonly ConsoleStyle ShortcutText = new(ConsoleColor.Gray, ConsoleColor.Black);

@@ -6,7 +6,7 @@ namespace NEdit
     /// <summary>
     /// Application settings and configuration for nEdit.
     /// </summary>
-    public partial class AppSettings
+    public class AppSettings
     {
         public const string AppName = "nEdit";
 
