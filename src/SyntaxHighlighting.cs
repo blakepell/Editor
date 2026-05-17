@@ -296,7 +296,7 @@ namespace Editor
                     definition = new SyntaxDefinition(tokens[0]);
                     foreach (string pattern in tokens.Skip(1))
                     {
-                        Regex? regex = Compile(pattern, ignoreCase: false);
+                        Regex? regex = Compile(pattern, ignoreCase: true);
                         if (regex is not null)
                         {
                             definition.FileMatches.Add(regex);

@@ -1,8 +1,8 @@
-# ApexGate Editor
+# nEdit
 
-ApexGate Editor is a terminal-based text editor written in C# for .NET. The
-project builds an executable named `ae` and focuses on a small, practical editing
-experience for the console.
+nEdit is a terminal-based text editor written in C# for .NET. The
+project builds an executable named `nedit` and focuses on a small, practical
+editing experience for the console.
 
 The editor is Nano- or Pico-like in spirit: it uses familiar terminal editor
 conventions such as shortcut rows, status messages, and direct keyboard-driven
@@ -44,6 +44,12 @@ Publish the editor:
 
 ```sh
 dotnet publish src/Editor.csproj
+```
+
+Publish the AOT native editor for `win-x64`:
+
+```sh
+dotnet publish -r win-x64 -c Release
 ```
 
 ## Native AOT Goal
