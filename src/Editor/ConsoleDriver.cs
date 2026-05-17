@@ -83,7 +83,7 @@ namespace NEdit.Editor
             Console.ForegroundColor = _originalForeground;
             Console.BackgroundColor = _originalBackground;
             ShowCursor(_originalCursorVisible);
-            WriteRaw("\x1b[0m\x1b[0 q\x1b[?1049l");
+            WriteRaw("\x1b[0m\x1b[0 q\x1b[?1049l\x1b[2J\x1b[H");
             Console.TreatControlCAsInput = false;
         }
 
@@ -103,7 +103,7 @@ namespace NEdit.Editor
             _frame = null;
         }
 
-        public void Clear() => WriteRaw("\x1b[2J");
+        public void Clear() => WriteRaw("\x1b[2J\x1b[H");
 
         public void WriteAt(int row, int column, string text, ConsoleStyle style)
         {
