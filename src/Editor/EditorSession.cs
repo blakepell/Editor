@@ -41,6 +41,22 @@ namespace NEdit.Editor
 
         public bool IsReadOnly => Options.ReadOnly || Document.ReadOnlyFromFile;
 
+        public bool HasSelection => SelectionRange is not null;
+
+        public (Position Start, Position End)? SelectionRange
+        {
+            get
+            {
+                if (Selection is not Position mark)
+                {
+                    return null;
+                }
+
+                var range = DocumentBuffer.Order(mark, Cursor);
+                return range.Start.CompareTo(range.End) == 0 ? null : range;
+            }
+        }
+
         public int LineNumberMargin => Options.LineNumbers ? Math.Max(3, Document.LineCount.ToString().Length + 1) : 0;
 
         public IReadOnlyList<HighlightSpan> GetHighlightSpans(int lineIndex) => _highlighter.Highlight(Document, lineIndex);
@@ -69,9 +85,9 @@ namespace NEdit.Editor
             }
         }
 
-        public void MoveLeft()
+        public void MoveLeft(bool extendSelection = false)
         {
-            EndTypingGroup();
+            BeginSelectionExtension(extendSelection);
             if (Cursor.Column > 0)
             {
                 MoveTo(Cursor.Line, Cursor.Column - 1);
@@ -80,11 +96,13 @@ namespace NEdit.Editor
             {
                 MoveTo(Cursor.Line - 1, Document.LineAt(Cursor.Line - 1).Length);
             }
+
+            EndSelectionExtension(extendSelection);
         }
 
-        public void MoveRight()
+        public void MoveRight(bool extendSelection = false)
         {
-            EndTypingGroup();
+            BeginSelectionExtension(extendSelection);
             if (Cursor.Column < Document.LineAt(Cursor.Line).Length)
             {
                 MoveTo(Cursor.Line, Cursor.Column + 1);
@@ -93,37 +111,81 @@ namespace NEdit.Editor
             {
                 MoveTo(Cursor.Line + 1, 0);
             }
+
+            EndSelectionExtension(extendSelection);
         }
 
-        public void MoveUp()
+        public void MoveUp(bool extendSelection = false)
         {
-            EndTypingGroup();
+            BeginSelectionExtension(extendSelection);
             if (Cursor.Line > 0)
             {
                 MoveTo(Cursor.Line - 1, Math.Min(DesiredColumn, Document.LineAt(Cursor.Line - 1).Length), preserveDesiredColumn: true);
             }
+
+            EndSelectionExtension(extendSelection);
         }
 
-        public void MoveDown()
+        public void MoveDown(bool extendSelection = false)
         {
-            EndTypingGroup();
+            BeginSelectionExtension(extendSelection);
             if (Cursor.Line + 1 < Document.LineCount)
             {
                 MoveTo(Cursor.Line + 1, Math.Min(DesiredColumn, Document.LineAt(Cursor.Line + 1).Length), preserveDesiredColumn: true);
             }
+
+            EndSelectionExtension(extendSelection);
         }
 
-        public void PageUp() => MoveTo(Math.Max(0, Cursor.Line - Layout.EditorRows), Cursor.Column);
+        public void PageUp()
+        {
+            ClearSelection();
+            MoveTo(Math.Max(0, Cursor.Line - Layout.EditorRows), Cursor.Column);
+        }
 
-        public void PageDown() => MoveTo(Math.Min(Document.LineCount - 1, Cursor.Line + Layout.EditorRows), Cursor.Column);
+        public void PageDown()
+        {
+            ClearSelection();
+            MoveTo(Math.Min(Document.LineCount - 1, Cursor.Line + Layout.EditorRows), Cursor.Column);
+        }
 
-        public void Home() => MoveTo(Cursor.Line, 0);
+        public void Home()
+        {
+            ClearSelection();
+            MoveTo(Cursor.Line, 0);
+        }
 
-        public void End() => MoveTo(Cursor.Line, Document.LineAt(Cursor.Line).Length);
+        public void End()
+        {
+            ClearSelection();
+            MoveTo(Cursor.Line, Document.LineAt(Cursor.Line).Length);
+        }
 
-        public void FileStart() => MoveTo(0, 0);
+        public void FileStart()
+        {
+            ClearSelection();
+            MoveTo(0, 0);
+        }
 
-        public void FileEnd() => MoveTo(Document.LineCount - 1, Document.LineAt(Document.LineCount - 1).Length);
+        public void FileEnd()
+        {
+            ClearSelection();
+            MoveTo(Document.LineCount - 1, Document.LineAt(Document.LineCount - 1).Length);
+        }
+
+        public void SelectAll()
+        {
+            EndTypingGroup();
+            Selection = new Position(0, 0);
+            MoveTo(Document.LineCount - 1, Document.LineAt(Document.LineCount - 1).Length);
+            SetStatus("Selected all");
+        }
+
+        public void ClearSelection()
+        {
+            EndTypingGroup();
+            Selection = null;
+        }
 
         public void ToggleSelection()
         {
@@ -241,12 +303,11 @@ namespace NEdit.Editor
 
             WithUndo(() =>
             {
-                if (Selection is not null)
+                if (SelectionRange is { } range)
                 {
-                    var (start, end) = DocumentBuffer.Order(Selection.Value, Cursor);
-                    Clipboard = Document.GetText(start, end);
-                    Document.DeleteRange(start, end);
-                    Cursor = start;
+                    Clipboard = Document.GetText(range.Start, range.End);
+                    Document.DeleteRange(range.Start, range.End);
+                    Cursor = range.Start;
                     Selection = null;
                 }
                 else
@@ -271,10 +332,9 @@ namespace NEdit.Editor
         public void Copy()
         {
             EndTypingGroup();
-            if (Selection is not null)
+            if (SelectionRange is { } range)
             {
-                var (start, end) = DocumentBuffer.Order(Selection.Value, Cursor);
-                Clipboard = Document.GetText(start, end);
+                Clipboard = Document.GetText(range.Start, range.End);
             }
             else
             {
@@ -282,6 +342,38 @@ namespace NEdit.Editor
             }
 
             SetStatus("Copied");
+        }
+
+        public string? GetSelectedText()
+        {
+            EndTypingGroup();
+            return SelectionRange is { } range ? Document.GetText(range.Start, range.End) : null;
+        }
+
+        public bool ReplaceSelection(string replacement, string statusMessage)
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return false;
+            }
+
+            if (SelectionRange is not { } range)
+            {
+                EndTypingGroup();
+                SetStatus("Select text first", alert: true);
+                return false;
+            }
+
+            WithUndo(() =>
+            {
+                Document.DeleteRange(range.Start, range.End);
+                Cursor = Document.InsertText(range.Start, replacement);
+                Selection = null;
+            });
+
+            SetStatus(statusMessage);
+            return true;
         }
 
         public void Paste()
@@ -792,16 +884,36 @@ namespace NEdit.Editor
             return Math.Clamp(column - Math.Min(column, leadingRemoved), 0, trimmed.Length);
         }
 
+        private void BeginSelectionExtension(bool extendSelection)
+        {
+            EndTypingGroup();
+            if (extendSelection)
+            {
+                Selection ??= Cursor;
+                return;
+            }
+
+            Selection = null;
+        }
+
+        private void EndSelectionExtension(bool extendSelection)
+        {
+            if (!extendSelection)
+            {
+                Selection = null;
+            }
+        }
+
         private bool DeleteSelectionWithoutUndo()
         {
-            if (Selection is null)
+            if (SelectionRange is not { } range)
             {
+                Selection = null;
                 return false;
             }
 
-            var (start, end) = DocumentBuffer.Order(Selection.Value, Cursor);
-            Document.DeleteRange(start, end);
-            Cursor = start;
+            Document.DeleteRange(range.Start, range.End);
+            Cursor = range.Start;
             Selection = null;
             return true;
         }

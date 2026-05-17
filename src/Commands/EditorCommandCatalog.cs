@@ -4,6 +4,7 @@
  * @license  : MIT
  */
 
+using System.Text;
 using CommunityToolkit.Mvvm.Input;
 
 namespace NEdit.Commands
@@ -69,6 +70,20 @@ namespace NEdit.Commands
                         context => context?.Session.ConvertTabsToSpaces(),
                         context => context?.Session.IsReadOnly == false)),
                 new EditorCommand(
+                    "Convert to Base64",
+                    "Convert the selected text to Base64.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        ConvertSelectionToBase64,
+                        context => context is not null)),
+                new EditorCommand(
+                    "Convert from Base64",
+                    "Decode the selected Base64 text.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        ConvertSelectionFromBase64,
+                        context => context is not null)),
+                new EditorCommand(
                     "Insert GUID",
                     "Insert a new GUID at the cursor.",
                     null,
@@ -106,5 +121,48 @@ namespace NEdit.Commands
 
         private static bool Contains(string value, string query) =>
             value.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+        private static void ConvertSelectionToBase64(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? selectedText = context.GetSelectedText();
+            if (selectedText is null)
+            {
+                context.Session.SetStatus("Select text first", alert: true);
+                return;
+            }
+
+            string encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(selectedText));
+            context.ReplaceSelection(encoded, "Converted selection to Base64");
+        }
+
+        private static void ConvertSelectionFromBase64(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? selectedText = context.GetSelectedText();
+            if (selectedText is null)
+            {
+                context.Session.SetStatus("Select text first", alert: true);
+                return;
+            }
+
+            try
+            {
+                string decoded = Encoding.UTF8.GetString(Convert.FromBase64String(selectedText));
+                context.ReplaceSelection(decoded, "Converted selection from Base64");
+            }
+            catch (FormatException)
+            {
+                context.Session.SetStatus("Selected text is not valid Base64", alert: true);
+            }
+        }
     }
 }

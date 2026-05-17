@@ -74,19 +74,19 @@ namespace NEdit.Editor
             }
             else if (key.Key is ConsoleKey.LeftArrow)
             {
-                _session.MoveLeft();
+                _session.MoveLeft(IsShift(key));
             }
             else if (key.Key is ConsoleKey.RightArrow)
             {
-                _session.MoveRight();
+                _session.MoveRight(IsShift(key));
             }
             else if (key.Key is ConsoleKey.UpArrow)
             {
-                _session.MoveUp();
+                _session.MoveUp(IsShift(key));
             }
             else if (key.Key is ConsoleKey.DownArrow)
             {
-                _session.MoveDown();
+                _session.MoveDown(IsShift(key));
             }
             else if (key.Key is ConsoleKey.PageUp)
             {
@@ -127,6 +127,10 @@ namespace NEdit.Editor
             else if (IsCtrl(key, 'T'))
             {
                 ShowCommandPalette();
+            }
+            else if (IsCtrl(key, 'A'))
+            {
+                _session.SelectAll();
             }
             else if (IsCtrl(key, 'G'))
             {
@@ -537,6 +541,11 @@ namespace NEdit.Editor
         private static bool IsAlt(ConsoleKeyInfo key, char value)
         {
             return (key.Modifiers & ConsoleModifiers.Alt) != 0 && char.ToUpperInvariant(key.KeyChar) == char.ToUpperInvariant(value);
+        }
+
+        private static bool IsShift(ConsoleKeyInfo key)
+        {
+            return (key.Modifiers & ConsoleModifiers.Shift) != 0;
         }
 
         private enum YesNoCancel
