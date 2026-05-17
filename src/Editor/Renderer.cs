@@ -211,7 +211,7 @@ namespace NEdit.Editor
             (string Key, string Text)[][] rows =
             [
                 [("F12", "Help"), ("^T", "Commands"), ("^X", "Exit"), ("^O", "Write Out"), ("^R", "Read File"), ("^W", "Where Is"), ("^\\", "Replace")],
-                [("^K", "Cut"), ("^U", "Paste"), ("^6", "Mark"), ("M-6", "Copy"), ("M-U", "Undo"), ("M-E", "Redo")]
+                [("^K", "Cut"), ("^U", "Paste"), ("^6", "Mark"), ("M-6", "Copy"), ("M-U", "Undo"), ("M-E", "Redo"), ("^G", "GUID")]
             ];
 
             for (int i = 0; i < rows.Length; i++)
