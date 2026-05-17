@@ -4,6 +4,7 @@
  * @license  : MIT
  */
 
+using NEdit.Memory;
 using System.Text;
 
 namespace NEdit.Editor
@@ -28,7 +29,8 @@ namespace NEdit.Editor
                 return 0;
             }
 
-            var options = new EditorOptions();
+            var appSettings = AppServices.GetRequiredService<AppSettings>();
+            var options = appSettings.Options;
             string? fileName = null;
             int startLine = 1;
             int startColumn = 1;

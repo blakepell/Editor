@@ -1,4 +1,7 @@
-﻿namespace NEdit
+﻿using NEdit.Editor;
+using System.Text.Json.Serialization;
+
+namespace NEdit
 {
     /// <summary>
     /// Application settings and configuration for nEdit.
@@ -15,6 +18,21 @@
         /// </summary>
         public static readonly string BuildVersion =
             typeof(Program).Assembly.GetName().Version?.ToString() ?? string.Empty;
+
+        /// <summary>
+        /// Editor options that are persisted across sessions. Loaded from
+        /// <c>~/.apexgate/nedit.json</c> on startup and saved on exit.
+        /// </summary>
+        public EditorOptions Options { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Source-generated JSON serializer context for <see cref="AppSettings"/>.
+    /// Required for AOT-safe serialization when <c>PublishAot = true</c>.
+    /// </summary>
+    [JsonSerializable(typeof(AppSettings))]
+    internal partial class AppSettingsJsonContext : JsonSerializerContext
+    {
 
     }
 }

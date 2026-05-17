@@ -4,11 +4,19 @@
  * @license  : MIT
  */
 
+using System.Text.Json.Serialization;
+
 namespace NEdit.Editor
 {
-    internal sealed class EditorOptions
+    public sealed class EditorOptions
     {
+        /// <summary>
+        /// Opens the file in read-only mode. This is a per-session command-line override
+        /// and is not persisted to settings.
+        /// </summary>
+        [JsonIgnore]
         public bool ReadOnly { get; set; }
+
         public bool LineNumbers { get; set; }
         public bool SoftWrap { get; set; }
         public bool CaseSensitiveSearch { get; set; }
