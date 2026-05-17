@@ -441,6 +441,77 @@ namespace NEdit.Editor
             SetStatus("Trimmed current line");
         }
 
+        public void TrimAllLines()
+        {
+            TrimAllLines(TrimLineKind.Both, "All lines are already trimmed", count => $"Trimmed {count} line{(count == 1 ? string.Empty : "s")}");
+        }
+
+        public void TrimAllLinesLeadingSpace()
+        {
+            TrimAllLines(TrimLineKind.Leading, "No leading whitespace to trim", count => $"Trimmed leading whitespace on {count} line{(count == 1 ? string.Empty : "s")}");
+        }
+
+        public void TrimAllLinesTrailingSpace()
+        {
+            TrimAllLines(TrimLineKind.Trailing, "No trailing whitespace to trim", count => $"Trimmed trailing whitespace on {count} line{(count == 1 ? string.Empty : "s")}");
+        }
+
+        public void RemoveEmptyLines()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            int removed = Document.Lines.Count(line => string.IsNullOrWhiteSpace(line.ToString()));
+            if (removed == 0)
+            {
+                EndTypingGroup();
+                SetStatus("No empty lines to remove");
+                return;
+            }
+
+            int oldLine = Cursor.Line;
+            int oldColumn = Cursor.Column;
+
+            WithUndo(() =>
+            {
+                int removedBeforeCursor = 0;
+                bool removedCursorLine = false;
+
+                for (int lineIndex = Document.LineCount - 1; lineIndex >= 0; lineIndex--)
+                {
+                    if (!string.IsNullOrWhiteSpace(Document.LineAt(lineIndex).ToString()))
+                    {
+                        continue;
+                    }
+
+                    if (lineIndex < oldLine)
+                    {
+                        removedBeforeCursor++;
+                    }
+                    else if (lineIndex == oldLine)
+                    {
+                        removedCursorLine = true;
+                    }
+
+                    Document.Lines.RemoveAt(lineIndex);
+                }
+
+                if (Document.Lines.Count == 0)
+                {
+                    Document.Lines.Add(new LineBuffer(string.Empty));
+                }
+
+                Selection = null;
+                int newLine = removedCursorLine ? oldLine - removedBeforeCursor : oldLine - removedBeforeCursor;
+                MoveTo(Math.Clamp(newLine, 0, Document.LineCount - 1), oldColumn);
+            });
+
+            SetStatus($"Removed {removed} empty line{(removed == 1 ? string.Empty : "s")}");
+        }
+
         public void ConvertTabsToSpaces()
         {
             if (IsReadOnly)
@@ -497,6 +568,42 @@ namespace NEdit.Editor
             });
 
             SetStatus($"Converted {tabCount} tab{(tabCount == 1 ? string.Empty : "s")} on {changedLines} line{(changedLines == 1 ? string.Empty : "s")}");
+        }
+
+        public void InsertGuid()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            InsertText(Guid.NewGuid().ToString());
+            SetStatus("Inserted GUID");
+        }
+
+        public void InsertDate()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            InsertText(DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+            SetStatus("Inserted date");
+        }
+
+        public void InsertDateTime()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            InsertText(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture));
+            SetStatus("Inserted date/time");
         }
 
         public string GetDisplayLine(int line)
@@ -614,6 +721,77 @@ namespace NEdit.Editor
             Document.ReplaceRange(new Position(lineIndex, 0), new Position(lineIndex, line.Length), text);
         }
 
+        private void TrimAllLines(TrimLineKind kind, string noChangeStatus, Func<int, string> changedStatus)
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            int changed = 0;
+            for (int lineIndex = 0; lineIndex < Document.LineCount; lineIndex++)
+            {
+                string line = Document.LineAt(lineIndex).ToString();
+                if (!string.Equals(line, TrimLine(line, kind), StringComparison.Ordinal))
+                {
+                    changed++;
+                }
+            }
+
+            if (changed == 0)
+            {
+                EndTypingGroup();
+                SetStatus(noChangeStatus);
+                return;
+            }
+
+            int oldLine = Cursor.Line;
+            int oldColumn = Cursor.Column;
+            int newColumn = oldColumn;
+
+            WithUndo(() =>
+            {
+                for (int lineIndex = 0; lineIndex < Document.LineCount; lineIndex++)
+                {
+                    string line = Document.LineAt(lineIndex).ToString();
+                    string trimmed = TrimLine(line, kind);
+                    if (string.Equals(line, trimmed, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (lineIndex == oldLine)
+                    {
+                        newColumn = AdjustTrimmedColumn(line, trimmed, kind, oldColumn);
+                    }
+
+                    ReplaceLine(lineIndex, trimmed);
+                }
+
+                Selection = null;
+                MoveTo(oldLine, newColumn);
+            });
+
+            SetStatus(changedStatus(changed));
+        }
+
+        private static string TrimLine(string line, TrimLineKind kind) =>
+            kind switch
+            {
+                TrimLineKind.Leading => line.TrimStart(),
+                TrimLineKind.Trailing => line.TrimEnd(),
+                _ => line.Trim()
+            };
+
+        private static int AdjustTrimmedColumn(string original, string trimmed, TrimLineKind kind, int column)
+        {
+            int leadingRemoved = kind is TrimLineKind.Leading or TrimLineKind.Both
+                ? original.Length - original.TrimStart().Length
+                : 0;
+            return Math.Clamp(column - Math.Min(column, leadingRemoved), 0, trimmed.Length);
+        }
+
         private bool DeleteSelectionWithoutUndo()
         {
             if (Selection is null)
@@ -678,6 +856,13 @@ namespace NEdit.Editor
         private void RefreshSyntax()
         {
             _highlighter = new SyntaxHighlighter(Syntaxes.Value.FindForFile(Document.FilePath));
+        }
+
+        private enum TrimLineKind
+        {
+            Both,
+            Leading,
+            Trailing
         }
     }
 }

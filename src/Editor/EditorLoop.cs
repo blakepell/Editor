@@ -305,8 +305,7 @@ namespace NEdit.Editor
 
         private void InsertGuid()
         {
-            _session.EndTypingGroup();
-            _session.InsertText(Guid.NewGuid().ToString());
+            _session.InsertGuid();
         }
 
         private void ShowCommandPalette()

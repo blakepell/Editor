@@ -34,11 +34,60 @@ namespace NEdit.Commands
                         context => context?.Session.TrimCurrentLine(),
                         context => context?.Session.IsReadOnly == false)),
                 new EditorCommand(
+                    "Trim All Lines",
+                    "Trim leading and trailing whitespace from every line.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.TrimAllLines(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Trim All Lines Leading Space",
+                    "Trim leading whitespace from every line.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.TrimAllLinesLeadingSpace(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Trim All Lines Trailing Space",
+                    "Trim trailing whitespace from every line.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.TrimAllLinesTrailingSpace(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Remove Empty Lines",
+                    "Remove blank and whitespace-only lines from the document.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.RemoveEmptyLines(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
                     "Convert Tabs To Spaces",
                     "Expand every tab in the document using the configured tab size.",
                     null,
                     new RelayCommand<EditorCommandContext>(
                         context => context?.Session.ConvertTabsToSpaces(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Insert GUID",
+                    "Insert a new GUID at the cursor.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.InsertGuid(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Insert Date",
+                    "Insert the current local date at the cursor.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.InsertDate(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Insert Date/Time",
+                    "Insert the current local date and time at the cursor.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.InsertDateTime(),
                         context => context?.Session.IsReadOnly == false))
             ]);
         }
