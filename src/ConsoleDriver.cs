@@ -1,12 +1,12 @@
 /*
- * @project  : ApexGate Editor
+ * @project  : ApexGate nEdit
  * @website  : https://www.apexgate.net
  * @license  : MIT
  */
 
 using System.Text;
 
-namespace Editor
+namespace NEdit
 {
     internal readonly record struct ConsoleStyle(ConsoleColor Foreground, ConsoleColor Background, bool Inverse = false)
     {

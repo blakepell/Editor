@@ -1,10 +1,10 @@
 /*
- * @project  : ApexGate Editor
+ * @project  : ApexGate nEdit
  * @website  : https://www.apexgate.net
  * @license  : MIT
  */
 
-namespace Editor
+namespace NEdit
 {
     /// <summary>
     /// Entry point for the editor application.

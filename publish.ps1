@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Increments the date-based build version in Editor.csproj and publishes the AOT binary.
+    Increments the date-based build version in NEdit.csproj and publishes the AOT binary.
 
 .DESCRIPTION
     Version format: YYYY.M.D.N
@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$csprojPath = Join-Path $scriptDir "src\Editor.csproj"
+$csprojPath = Join-Path $scriptDir "src\NEdit.csproj"
 
 # Read the project file
 $content = Get-Content $csprojPath -Raw -Encoding UTF8

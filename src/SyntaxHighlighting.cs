@@ -1,5 +1,5 @@
 /*
- * @project  : ApexGate Editor
+ * @project  : ApexGate nEdit
  * @website  : https://www.apexgate.net
  * @license  : MIT
  */
@@ -7,7 +7,7 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace Editor
+namespace NEdit
 {
     internal readonly record struct HighlightSpan(int Start, int Length, ConsoleStyle Style);
 
