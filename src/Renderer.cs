@@ -46,8 +46,19 @@ namespace Editor
             var doc = session.Document;
             string dirty = doc.Modified ? " [Modified]" : string.Empty;
             string mode = session.IsReadOnly ? " [Read Only]" : string.Empty;
-            string text = $" {Program.AppName} {Program.Version} : {doc.DisplayName}{dirty}{mode}";
-            WritePadded(0, text, ConsoleStyle.Title);
+            string left = $" {Program.AppName} {Program.Version} : {doc.DisplayName}{dirty}{mode}";
+            WritePadded(0, left, ConsoleStyle.Title);
+
+            string build = Program.BuildVersion;
+            if (build.Length > 0)
+            {
+                string right = $"Build: {build} ";
+                int col = _console.Size.Columns - right.Length;
+                if (col > left.Length)
+                {
+                    _console.WriteAt(0, col, right, ConsoleStyle.Title);
+                }
+            }
         }
 
         private void DrawEditor(EditorSession session)

@@ -1,1 +1,2 @@
-dotnet publish -r win-x64 -c Release
+@echo off
+powershell -ExecutionPolicy Bypass -File "%~dp0publish.ps1" %*
