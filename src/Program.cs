@@ -22,5 +22,21 @@ namespace NEdit
         {
             return EditorApp.Run(args);
         }
+
+        /// <summary>
+        /// Loads the AppSettings from the users folder.
+        /// </summary>
+        public static void LoadAppSettings()
+        {
+            //appServices.AddSingleton(new AppSettings());
+        }
+
+        /// <summary>
+        /// Saves the AppSettings to the users folder.
+        /// </summary>
+        public static void SaveAppSettings()
+        {
+
+        }
     }
 }
