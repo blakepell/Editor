@@ -4,7 +4,7 @@
  * @license  : MIT
  */
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal sealed class EditorOptions
     {

@@ -4,7 +4,7 @@
  * @license  : MIT
  */
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal sealed record UndoRecord(string[] BeforeLines, Position BeforeCursor, string[] AfterLines, Position AfterCursor);
 

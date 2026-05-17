@@ -7,7 +7,7 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal readonly record struct HighlightSpan(int Start, int Length, ConsoleStyle Style);
 

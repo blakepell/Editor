@@ -4,7 +4,7 @@
  * @license  : MIT
  */
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal sealed class EditorLoop
     {
@@ -282,7 +282,7 @@ namespace NEdit
             _session.EndTypingGroup();
             string[] lines =
             [
-                $"{Program.AppName} v{Program.BuildVersion} Help",
+                $"{AppSettings.AppName} v{AppSettings.BuildVersion} Help",
                 "",
                 "^X Exit       ^O Write Out   ^R Read File   ^W Where Is",
                 "^\\ Replace    ^K Cut         ^U Paste       ^6 Mark",

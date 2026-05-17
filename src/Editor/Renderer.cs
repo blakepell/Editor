@@ -4,7 +4,7 @@
  * @license  : MIT
  */
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal sealed class Renderer
     {
@@ -46,10 +46,10 @@ namespace NEdit
             var doc = session.Document;
             string dirty = doc.Modified ? " [Modified]" : string.Empty;
             string mode = session.IsReadOnly ? " [Read Only]" : string.Empty;
-            string left = $" {Program.AppName} {Program.Version} : {doc.DisplayName}{dirty}{mode}";
+            string left = $" {AppSettings.AppName} {AppSettings.Version} : {doc.DisplayName}{dirty}{mode}";
             WritePadded(0, left, ConsoleStyle.Title);
 
-            string build = Program.BuildVersion;
+            string build = AppSettings.BuildVersion;
             if (build.Length > 0)
             {
                 string right = $"Build: {build} ";

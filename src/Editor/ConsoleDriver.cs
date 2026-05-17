@@ -6,7 +6,7 @@
 
 using System.Text;
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal readonly record struct ConsoleStyle(ConsoleColor Foreground, ConsoleColor Background, bool Inverse = false)
     {

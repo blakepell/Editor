@@ -6,7 +6,7 @@
 
 using System.Text;
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal static class EditorApp
     {
@@ -17,14 +17,14 @@ namespace NEdit
 
             if (args.Any(a => a is "-h" or "--help"))
             {
-                Console.WriteLine($"{Program.AppName} {Program.Version}");
+                Console.WriteLine($"{AppSettings.AppName} {AppSettings.Version}");
                 Console.WriteLine("Usage: ae [--readonly] [--linenumbers] [--softwrap] [+LINE[,COLUMN]] [FILE]");
                 return 0;
             }
 
             if (args.Any(a => a is "-V" or "--version"))
             {
-                Console.WriteLine($"{Program.AppName} {Program.Version}");
+                Console.WriteLine($"{AppSettings.AppName} {AppSettings.Version}");
                 return 0;
             }
 

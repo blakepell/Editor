@@ -6,7 +6,7 @@
 
 using System.Text;
 
-namespace NEdit
+namespace NEdit.Editor
 {
     internal sealed class DocumentBuffer
     {
