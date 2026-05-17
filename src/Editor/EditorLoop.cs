@@ -4,6 +4,7 @@
  * @license  : MIT
  */
 
+using NEdit.Commands;
 using NEdit.Memory;
 
 namespace NEdit.Editor
@@ -13,12 +14,16 @@ namespace NEdit.Editor
         private readonly EditorSession _session;
         private readonly Renderer _renderer;
         private readonly AppSettings _appSettings;
+        private readonly EditorCommandCatalog _commandCatalog;
+        private readonly EditorCommandContext _commandContext;
 
         public EditorLoop(EditorSession session, Renderer renderer)
         {
             _session = session;
             _renderer = renderer;
             _appSettings = AppServices.GetRequiredService<AppSettings>();
+            _commandCatalog = EditorCommandCatalog.CreateDefault();
+            _commandContext = new EditorCommandContext(_session);
         }
 
         public void Run()
@@ -118,6 +123,10 @@ namespace NEdit.Editor
             else if (key.Key is ConsoleKey.F12)
             {
                 ShowHelp();
+            }
+            else if (IsCtrl(key, 'T'))
+            {
+                ShowCommandPalette();
             }
             else if (IsCtrl(key, 'G'))
             {
@@ -300,6 +309,98 @@ namespace NEdit.Editor
             _session.InsertText(Guid.NewGuid().ToString());
         }
 
+        private void ShowCommandPalette()
+        {
+            _session.EndTypingGroup();
+            string query = string.Empty;
+            int cursor = 0;
+            int selectedIndex = 0;
+
+            while (true)
+            {
+                IReadOnlyList<EditorCommand> matches = _commandCatalog.Filter(query);
+                if (selectedIndex >= matches.Count)
+                {
+                    selectedIndex = Math.Max(0, matches.Count - 1);
+                }
+
+                _renderer.RenderCommandPalette(_session, query, cursor, matches, selectedIndex, _commandContext);
+                ConsoleKeyInfo key = _session.Console.ReadKey();
+
+                if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.Enter)
+                {
+                    ExecuteSelectedCommand(matches, selectedIndex);
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.UpArrow)
+                {
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                }
+                else if (key.Key is ConsoleKey.DownArrow)
+                {
+                    selectedIndex = Math.Min(Math.Max(0, matches.Count - 1), selectedIndex + 1);
+                }
+                else if (key.Key is ConsoleKey.Home)
+                {
+                    cursor = 0;
+                }
+                else if (key.Key is ConsoleKey.End)
+                {
+                    cursor = query.Length;
+                }
+                else if (key.Key is ConsoleKey.LeftArrow)
+                {
+                    cursor = Math.Max(0, cursor - 1);
+                }
+                else if (key.Key is ConsoleKey.RightArrow)
+                {
+                    cursor = Math.Min(query.Length, cursor + 1);
+                }
+                else if (key.Key is ConsoleKey.Backspace && cursor > 0)
+                {
+                    query = query.Remove(cursor - 1, 1);
+                    cursor--;
+                    selectedIndex = 0;
+                }
+                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                {
+                    query = query.Remove(cursor, 1);
+                    selectedIndex = 0;
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    cursor++;
+                    selectedIndex = 0;
+                }
+            }
+        }
+
+        private void ExecuteSelectedCommand(IReadOnlyList<EditorCommand> matches, int selectedIndex)
+        {
+            if (matches.Count == 0)
+            {
+                _session.SetStatus("No command matches", alert: true);
+                return;
+            }
+
+            EditorCommand command = matches[Math.Clamp(selectedIndex, 0, matches.Count - 1)];
+            if (!command.CanExecute(_commandContext))
+            {
+                _session.SetStatus($"{command.Name} is not available", alert: true);
+                return;
+            }
+
+            command.Execute(_commandContext);
+        }
+
         private void ShowHelp()
         {
             _session.EndTypingGroup();
@@ -311,6 +412,7 @@ namespace NEdit.Editor
                 "^\\ Replace    ^K Cut         ^U Paste       ^6 Mark",
                 "M-6 Copy      M-U Undo       M-E Redo       ^_ Go To Line",
                 "^G Insert GUID at cursor.    ^L toggles line numbers.",
+                "^T opens the command palette.",
                 "Ctrl+Home goto first line.   Ctrl+End goto last line.",
                 "",
                 "Press any key to return."

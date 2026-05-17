@@ -4,6 +4,8 @@
  * @license  : MIT
  */
 
+using NEdit.Commands;
+
 namespace NEdit.Editor
 {
     internal sealed class Renderer
@@ -38,6 +40,39 @@ namespace NEdit.Editor
             DrawStatus(session);
             DrawShortcuts(session);
             PositionCursor(session);
+            _console.EndFrame();
+        }
+
+        public void RenderCommandPalette(
+            EditorSession session,
+            string query,
+            int queryCursor,
+            IReadOnlyList<EditorCommand> commands,
+            int selectedIndex,
+            EditorCommandContext context)
+        {
+            _console.BeginFrame();
+            _console.ShowCursor(false);
+            _console.UseBlockCursor();
+
+            TerminalSize size = _console.Size;
+            if (size != _lastSize)
+            {
+                _console.Clear();
+                _lastSize = size;
+            }
+
+            session.Layout = EditorLayout.From(size);
+            session.EnsureCursorVisible();
+
+            DrawTitle(session);
+            DrawEditor(session);
+            int inputColumn = DrawCommandInput(session, query, queryCursor);
+            DrawShortcuts(session);
+            DrawCommandPalette(session, commands, selectedIndex, context);
+            _console.MoveCursor(session.Layout.StatusRow, inputColumn);
+            _console.UseBlockCursor();
+            _console.ShowCursor(true);
             _console.EndFrame();
         }
 
@@ -175,7 +210,7 @@ namespace NEdit.Editor
         {
             (string Key, string Text)[][] rows =
             [
-                [("F12", "Help"), ("^X", "Exit"), ("^O", "Write Out"), ("^R", "Read File"), ("^W", "Where Is"), ("^\\", "Replace")],
+                [("F12", "Help"), ("^T", "Commands"), ("^X", "Exit"), ("^O", "Write Out"), ("^R", "Read File"), ("^W", "Where Is"), ("^\\", "Replace")],
                 [("^K", "Cut"), ("^U", "Paste"), ("^6", "Mark"), ("M-6", "Copy"), ("M-U", "Undo"), ("M-E", "Redo")]
             ];
 
@@ -215,6 +250,103 @@ namespace NEdit.Editor
                     column += textWidth;
                 }
             }
+        }
+
+        private int DrawCommandInput(EditorSession session, string query, int cursor)
+        {
+            int row = session.Layout.StatusRow;
+            int columns = session.Layout.Columns;
+            string prefix = "Command: ";
+            int inputWidth = Math.Max(0, columns - prefix.Length);
+            int start = 0;
+            if (query.Length > inputWidth)
+            {
+                start = Math.Clamp(cursor - inputWidth + 1, 0, query.Length - inputWidth);
+            }
+
+            string visibleInput = inputWidth == 0
+                ? string.Empty
+                : query.Substring(start, Math.Min(inputWidth, query.Length - start));
+            string text = Fit(prefix + visibleInput, columns);
+            WritePadded(row, text, ConsoleStyle.Status);
+            return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
+        }
+
+        private void DrawCommandPalette(
+            EditorSession session,
+            IReadOnlyList<EditorCommand> commands,
+            int selectedIndex,
+            EditorCommandContext context)
+        {
+            int height = session.Layout.StatusRow - session.Layout.EditorTop;
+            int columns = session.Layout.Columns;
+            if (height < 3 || columns < 10)
+            {
+                return;
+            }
+
+            int width = Math.Min(columns, Math.Clamp(columns / 2, 28, 48));
+            int left = Math.Max(0, columns - width);
+            int top = session.Layout.EditorTop;
+            int bottom = top + height - 1;
+            int innerWidth = Math.Max(0, width - 2);
+
+            DrawPanelBorder(top, left, width, " Commands ");
+            for (int row = top + 1; row < bottom; row++)
+            {
+                _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
+                WritePadded(row, left + 1, ReadOnlySpan<char>.Empty, innerWidth, ConsoleStyle.Normal);
+                _console.WriteAt(row, left + width - 1, "|", ConsoleStyle.ShortcutKey);
+            }
+
+            _console.WriteAt(bottom, left, "+" + new string('-', Math.Max(0, width - 2)) + "+", ConsoleStyle.ShortcutKey);
+
+            int listTop = top + 1;
+            int listRows = Math.Max(0, bottom - listTop);
+            if (commands.Count == 0)
+            {
+                if (listRows > 0)
+                {
+                    _console.WriteAt(listTop, left + 1, Fit(" No matches", innerWidth).PadRight(innerWidth), ConsoleStyle.Normal);
+                }
+
+                return;
+            }
+
+            int first = 0;
+            if (selectedIndex >= listRows)
+            {
+                first = selectedIndex - listRows + 1;
+            }
+
+            for (int i = 0; i < listRows && first + i < commands.Count; i++)
+            {
+                int commandIndex = first + i;
+                EditorCommand command = commands[commandIndex];
+                bool selected = commandIndex == selectedIndex;
+                bool enabled = command.CanExecute(context);
+                string prefix = selected ? "> " : "  ";
+                string disabled = enabled ? string.Empty : " [disabled]";
+                string label = prefix + command.Name + disabled;
+                ConsoleStyle style = selected ? ConsoleStyle.Selection : enabled ? ConsoleStyle.Normal : ConsoleStyle.LineNumber;
+                _console.WriteAt(listTop + i, left + 1, Fit(label, innerWidth).PadRight(innerWidth), style);
+            }
+        }
+
+        private void DrawPanelBorder(int row, int left, int width, string title)
+        {
+            if (width < 2)
+            {
+                return;
+            }
+
+            string line = "+" + new string('-', Math.Max(0, width - 2)) + "+";
+            if (width > 4 && title.Length < width - 2)
+            {
+                line = "+" + Fit(title, width - 2).PadRight(width - 2, '-') + "+";
+            }
+
+            _console.WriteAt(row, left, line, ConsoleStyle.ShortcutKey);
         }
 
         private void PositionCursor(EditorSession session)

@@ -409,6 +409,96 @@ namespace NEdit.Editor
             return count;
         }
 
+        public void TrimCurrentLine()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            string line = Document.LineAt(Cursor.Line).ToString();
+            string trimmed = line.Trim();
+            if (string.Equals(line, trimmed, StringComparison.Ordinal))
+            {
+                EndTypingGroup();
+                SetStatus("Current line is already trimmed");
+                return;
+            }
+
+            int oldLine = Cursor.Line;
+            int oldColumn = Cursor.Column;
+            int leadingRemoved = line.Length - line.TrimStart().Length;
+            int newColumn = Math.Clamp(oldColumn - Math.Min(oldColumn, leadingRemoved), 0, trimmed.Length);
+
+            WithUndo(() =>
+            {
+                ReplaceLine(oldLine, trimmed);
+                Selection = null;
+                MoveTo(oldLine, newColumn);
+            });
+
+            SetStatus("Trimmed current line");
+        }
+
+        public void ConvertTabsToSpaces()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            int changedLines = 0;
+            int tabCount = 0;
+            for (int lineIndex = 0; lineIndex < Document.LineCount; lineIndex++)
+            {
+                string line = Document.LineAt(lineIndex).ToString();
+                int lineTabs = line.Count(ch => ch == '\t');
+                if (lineTabs > 0)
+                {
+                    changedLines++;
+                    tabCount += lineTabs;
+                }
+            }
+
+            if (tabCount == 0)
+            {
+                EndTypingGroup();
+                SetStatus("No tabs to convert");
+                return;
+            }
+
+            int oldLine = Cursor.Line;
+            int oldColumn = Cursor.Column;
+            int newColumn = oldColumn;
+
+            WithUndo(() =>
+            {
+                for (int lineIndex = 0; lineIndex < Document.LineCount; lineIndex++)
+                {
+                    string line = Document.LineAt(lineIndex).ToString();
+                    if (!line.Contains('\t'))
+                    {
+                        continue;
+                    }
+
+                    if (lineIndex == oldLine)
+                    {
+                        string beforeCursor = line[..Math.Min(oldColumn, line.Length)];
+                        newColumn = ExpandTabs(beforeCursor).Length;
+                    }
+
+                    ReplaceLine(lineIndex, ExpandTabs(line));
+                }
+
+                Selection = null;
+                MoveTo(oldLine, newColumn);
+            });
+
+            SetStatus($"Converted {tabCount} tab{(tabCount == 1 ? string.Empty : "s")} on {changedLines} line{(changedLines == 1 ? string.Empty : "s")}");
+        }
+
         public string GetDisplayLine(int line)
         {
             return ExpandTabs(Document.LineAt(line).ToString());
@@ -516,6 +606,12 @@ namespace NEdit.Editor
             {
                 Document.Modified = true;
             }
+        }
+
+        private void ReplaceLine(int lineIndex, string text)
+        {
+            LineBuffer line = Document.LineAt(lineIndex);
+            Document.ReplaceRange(new Position(lineIndex, 0), new Position(lineIndex, line.Length), text);
         }
 
         private bool DeleteSelectionWithoutUndo()
