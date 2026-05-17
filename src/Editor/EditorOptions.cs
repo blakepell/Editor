@@ -21,6 +21,8 @@ namespace NEdit.Editor
         public bool SoftWrap { get; set; }
         public bool CaseSensitiveSearch { get; set; }
         public int TabSize { get; set; } = 4;
+
+        public int KeyboardPollingInterval { get; set; } = 25;
     }
 
     internal readonly record struct Position(int Line, int Column) : IComparable<Position>

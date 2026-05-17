@@ -4,29 +4,52 @@
  * @license  : MIT
  */
 
+using NEdit.Memory;
+
 namespace NEdit.Editor
 {
     internal sealed class EditorLoop
     {
         private readonly EditorSession _session;
         private readonly Renderer _renderer;
+        private readonly AppSettings _appSettings;
 
         public EditorLoop(EditorSession session, Renderer renderer)
         {
             _session = session;
             _renderer = renderer;
+            _appSettings = AppServices.GetRequiredService<AppSettings>();
         }
 
         public void Run()
         {
             _renderer.Render(_session);
+            TerminalSize lastSize = _session.Console.Size;
 
             while (_session.Running)
             {
+                // Poll for keypresses so resize events can be detected between keystrokes.
+                while (!_session.Console.KeyAvailable)
+                {
+                    Thread.Sleep(_appSettings.Options.KeyboardPollingInterval);
+                    TerminalSize current = _session.Console.Size;
+                    if (current != lastSize)
+                    {
+                        lastSize = current;
+                        _renderer.Render(_session);
+                    }
+                }
+
+                if (!_session.Running)
+                {
+                    break;
+                }
+
                 ConsoleKeyInfo key = _session.Console.ReadKey();
                 HandleKey(key);
                 _session.EnsureCursorVisible();
                 _renderer.Render(_session);
+                lastSize = _session.Console.Size;
             }
 
             _session.EndTypingGroup();
