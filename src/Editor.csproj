@@ -4,7 +4,7 @@
     <Company>Blake Pell</Company>
     <Description>nEdit Text Editor</Description>
     <Copyright>2026</Copyright>
-    <Version>2026.5.17.2</Version>
+    <Version>2026.5.17.3</Version>
     <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <AssemblyName>ae</AssemblyName>
+    <AssemblyName>nedit</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
