@@ -282,14 +282,13 @@ namespace NEdit
             _session.EndTypingGroup();
             string[] lines =
             [
-                "Nano.cs help",
+                $"{Program.AppName} v{Program.BuildVersion} Help",
                 "",
                 "^X Exit       ^O Write Out   ^R Read File   ^W Where Is",
                 "^\\ Replace    ^K Cut         ^U Paste       ^6 Mark",
                 "M-6 Copy      M-U Undo       M-E Redo       ^_ Go To Line",
-                "^G Insert GUID at cursor.",
-                "^L toggles line numbers.",
-                "Ctrl+Home moves to the first line.  Ctrl+End moves to the last line.",
+                "^G Insert GUID at cursor.    ^L toggles line numbers.",
+                "Ctrl+Home goto first line.   Ctrl+End goto last line.",
                 "",
                 "Press any key to return."
             ];
