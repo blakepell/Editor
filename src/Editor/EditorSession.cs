@@ -674,6 +674,12 @@ namespace NEdit.Editor
             SetStatus("Inserted GUID");
         }
 
+        /// <summary>
+        /// Shows the current working directory in the status bar.
+        /// </summary>
+        public void ShowCurrentDirectory() =>
+            SetStatus($"Directory: {Directory.GetCurrentDirectory()}");
+
         public void InsertDate()
         {
             if (IsReadOnly)

@@ -338,7 +338,7 @@ namespace NEdit.Editor
 
                 if (key.Key is ConsoleKey.Enter)
                 {
-                    ExecuteSelectedCommand(matches, selectedIndex);
+                    ExecuteSelectedCommand(matches, selectedIndex, query);
                     return;
                 }
 
@@ -386,7 +386,7 @@ namespace NEdit.Editor
             }
         }
 
-        private void ExecuteSelectedCommand(IReadOnlyList<EditorCommand> matches, int selectedIndex)
+        private void ExecuteSelectedCommand(IReadOnlyList<EditorCommand> matches, int selectedIndex, string query)
         {
             if (matches.Count == 0)
             {
@@ -401,7 +401,25 @@ namespace NEdit.Editor
                 return;
             }
 
-            command.Execute(_commandContext);
+            // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
+            string? argument = _commandCatalog.ParseAliasArgument(command, query);
+
+            // If the command requires an argument and none was supplied via alias, prompt for it.
+            if (command.ArgumentPrompt is not null && string.IsNullOrWhiteSpace(argument))
+            {
+                argument = Prompt(command.ArgumentPrompt, string.Empty, allowEmpty: false);
+                if (argument is null)
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+            }
+
+            EditorCommandContext context = argument is not null
+                ? _commandContext with { Argument = argument }
+                : _commandContext;
+
+            command.Execute(context);
         }
 
         private void ShowHelp()

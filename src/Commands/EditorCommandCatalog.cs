@@ -4,8 +4,8 @@
  * @license  : MIT
  */
 
-using System.Text;
 using CommunityToolkit.Mvvm.Input;
+using System.Text;
 
 namespace NEdit.Commands
 {
@@ -103,7 +103,23 @@ namespace NEdit.Commands
                     null,
                     new RelayCommand<EditorCommandContext>(
                         context => context?.Session.InsertDateTime(),
-                        context => context?.Session.IsReadOnly == false))
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Show Working Directory",
+                    "Display the current working directory in the status bar.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.ShowCurrentDirectory(),
+                        context => context is not null)),
+                new EditorCommand(
+                    "Change Directory",
+                    "Change the current working directory to the specified path.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        ChangeDirectory,
+                        context => context is not null),
+                    alias: "cd",
+                    argumentPrompt: "Directory")
             ]);
         }
 
@@ -114,10 +130,49 @@ namespace NEdit.Commands
                 return _commands;
             }
 
+            string aliasWord = FirstWord(query);
+
             return _commands
-                .Where(command => Contains(command.Name, query) || Contains(command.Description, query))
+                .Where(command =>
+                    Contains(command.Name, query) ||
+                    Contains(command.Description, query) ||
+                    MatchesAlias(command, aliasWord))
                 .ToArray();
         }
+
+        /// <summary>
+        /// If <paramref name="query"/> begins with the command's alias keyword, returns the
+        /// remainder of the query as the argument; otherwise returns <see langword="null"/>.
+        /// </summary>
+        public string? ParseAliasArgument(EditorCommand command, string query)
+        {
+            if (command.Alias is null)
+            {
+                return null;
+            }
+
+            string aliasWord = FirstWord(query);
+            if (!MatchesAlias(command, aliasWord))
+            {
+                return null;
+            }
+
+            string argument = query.Length > aliasWord.Length
+                ? query[(aliasWord.Length + 1)..].Trim()
+                : string.Empty;
+
+            return argument;
+        }
+
+        private static string FirstWord(string query)
+        {
+            int space = query.IndexOf(' ');
+            return space < 0 ? query : query[..space];
+        }
+
+        private static bool MatchesAlias(EditorCommand command, string word) =>
+            command.Alias is not null &&
+            string.Equals(command.Alias, word, StringComparison.OrdinalIgnoreCase);
 
         private static bool Contains(string value, string query) =>
             value.Contains(query, StringComparison.OrdinalIgnoreCase);
@@ -162,6 +217,38 @@ namespace NEdit.Commands
             catch (FormatException)
             {
                 context.Session.SetStatus("Selected text is not valid Base64", alert: true);
+            }
+        }
+
+        private static void ChangeDirectory(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? path = context.Argument;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                context.Session.SetStatus("Usage: cd <path>", alert: true);
+                return;
+            }
+
+            try
+            {
+                string resolved = Path.GetFullPath(path);
+                if (!Directory.Exists(resolved))
+                {
+                    context.Session.SetStatus($"Directory not found: {path}", alert: true);
+                    return;
+                }
+
+                Directory.SetCurrentDirectory(resolved);
+                context.Session.SetStatus($"Directory: {resolved}");
+            }
+            catch (Exception ex)
+            {
+                context.Session.SetStatus($"Error: {ex.Message}", alert: true);
             }
         }
     }
