@@ -20,7 +20,7 @@ color red "(^|[[:space:]])~~[^ ][^~]*~~"
 color brightmagenta "^(---+|===+|___+|\*\*\*+)\s*$"
 
 # headlines
-color brightmagenta  "^#{1,6}.*"
+color cyan  "^#{1,6}.*"
 
 # lists
 color blue   "^[[:space:]]*[\*+-] |^[[:space:]]*[0-9]+\. "

@@ -5,6 +5,7 @@
  */
 
 using CommunityToolkit.Mvvm.Input;
+using System.Diagnostics;
 using System.Text;
 
 namespace NEdit.Commands
@@ -127,7 +128,16 @@ namespace NEdit.Commands
                         ChangeDirectory,
                         context => context is not null),
                     alias: "cd",
-                    argumentPrompt: "Directory")
+                    argumentPrompt: "Directory"),
+                new EditorCommand(
+                    "Shell",
+                    "Run a shell command and display its output, then return to the editor.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        RunShell,
+                        context => context is not null),
+                    alias: "shell",
+                    argumentPrompt: "Command")
             ]);
         }
 
@@ -258,6 +268,63 @@ namespace NEdit.Commands
             {
                 context.Session.SetStatus($"Error: {ex.Message}", alert: true);
             }
+        }
+
+        private static void RunShell(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? command = context.Argument?.Trim();
+            if (string.IsNullOrWhiteSpace(command))
+            {
+                context.Session.SetStatus("Usage: shell <command>", alert: true);
+                return;
+            }
+
+            context.Session.Console.LeaveEditorMode();
+
+            int exitCode = -1;
+            try
+            {
+                var psi = new ProcessStartInfo { UseShellExecute = false };
+
+                if (OperatingSystem.IsWindows())
+                {
+                    psi.FileName = "cmd.exe";
+                    psi.Arguments = "/c " + command;
+                }
+                else
+                {
+                    psi.FileName = "/bin/sh";
+                    psi.Arguments = "-c " + command;
+                }
+
+                using Process? process = Process.Start(psi);
+                if (process is not null)
+                {
+                    process.WaitForExit();
+                    exitCode = process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+
+            Console.WriteLine();
+            Console.Write(exitCode == 0
+                ? "Completed (exit 0). Press any key to return to editor..."
+                : $"Exit code {exitCode}. Press any key to return to editor...");
+            Console.ReadKey(intercept: true);
+
+            context.Session.Console.EnterEditorMode();
+            context.Session.SetStatus(
+                exitCode == 0 ? $"Shell: {command}" : $"Shell: {command} (exit {exitCode})",
+                alert: exitCode != 0);
         }
     }
 }
