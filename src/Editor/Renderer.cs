@@ -203,7 +203,7 @@ namespace NEdit.Editor
                 text = $"Line {cursor.Line + 1}, Col {cursor.Column + 1}";
             }
 
-            WritePadded(session.Layout.StatusRow, text, session.StatusIsAlert ? ConsoleStyle.Status with { Background = ConsoleColor.Red } : ConsoleStyle.Status);
+            WritePadded(session.Layout.StatusRow, text, session.StatusStyle ?? ConsoleStyle.Status);
         }
 
         private void DrawShortcuts(EditorSession session)

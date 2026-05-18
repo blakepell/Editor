@@ -244,7 +244,7 @@ namespace NEdit.Commands
                 }
 
                 Directory.SetCurrentDirectory(resolved);
-                context.Session.SetStatus($"Directory: {resolved}");
+                context.Session.SetStatusSuccess($"Directory: {resolved}");
             }
             catch (Exception ex)
             {

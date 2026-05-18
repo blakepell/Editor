@@ -35,7 +35,7 @@ namespace NEdit.Editor
         public EditorLayout Layout { get; set; }
         public bool Running { get; set; } = true;
         public string StatusMessage { get; private set; } = string.Empty;
-        public bool StatusIsAlert { get; private set; }
+        public ConsoleStyle? StatusStyle { get; private set; }
         public string? LastSearch { get; set; }
         public string? SuggestedSavePath { get; private set; }
 
@@ -64,16 +64,37 @@ namespace NEdit.Editor
         public Dictionary<int, List<HighlightSpan>> GetHighlightSpans(int firstLine, int lineCount) =>
             _highlighter.HighlightRange(Document, firstLine, lineCount);
 
-        public void SetStatus(string message, bool alert = false)
+        public void SetStatus(string message, bool alert = false, ConsoleColor? foreground = null, ConsoleColor? background = null)
         {
             StatusMessage = message;
-            StatusIsAlert = alert;
+            if (alert)
+            {
+                StatusStyle = ConsoleStyle.Status with { Background = ConsoleColor.Red };
+            }
+            else if (foreground is not null || background is not null)
+            {
+                StatusStyle = new ConsoleStyle(foreground ?? ConsoleStyle.Status.Foreground, background ?? ConsoleStyle.Status.Background);
+            }
+            else
+            {
+                StatusStyle = null;
+            }
+        }
+
+        public void SetStatusSuccess(string message)
+        {
+            SetStatus(message, false, ConsoleColor.White, ConsoleColor.DarkGreen);
+        }
+
+        public void SetStatusWarning(string message)
+        {
+            SetStatus(message, false, ConsoleColor.White, ConsoleColor.DarkYellow);
         }
 
         public void ClearStatus()
         {
             StatusMessage = string.Empty;
-            StatusIsAlert = false;
+            StatusStyle = null;
         }
 
         public void MoveTo(int line, int column, bool preserveDesiredColumn = false)
