@@ -13,7 +13,7 @@ namespace NEdit.Commands
     /// </summary>
     internal sealed class EditorCommand
     {
-        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null)
+        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false)
         {
             Name = name;
             Description = description;
@@ -21,6 +21,7 @@ namespace NEdit.Commands
             Command = command;
             Alias = alias;
             ArgumentPrompt = argumentPrompt;
+            UseFilePicker = useFilePicker;
         }
 
         public string Name { get; }
@@ -40,6 +41,12 @@ namespace NEdit.Commands
         /// <see cref="EditorCommandContext.Argument"/>.
         /// </summary>
         public string? ArgumentPrompt { get; }
+
+        /// <summary>
+        /// When <see langword="true"/>, the command palette will show a file browser instead of
+        /// executing the command directly. The selected file path is handled by <c>EditorLoop</c>.
+        /// </summary>
+        public bool UseFilePicker { get; }
 
         public bool CanExecute(EditorCommandContext context) => Command.CanExecute(context);
 

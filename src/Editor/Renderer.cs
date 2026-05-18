@@ -76,6 +76,39 @@ namespace NEdit.Editor
             _console.EndFrame();
         }
 
+        public void RenderFileBrowser(
+            EditorSession session,
+            string query,
+            int queryCursor,
+            IReadOnlyList<FileEntry> entries,
+            int selectedIndex,
+            string currentDir)
+        {
+            _console.BeginFrame();
+            _console.ShowCursor(false);
+            _console.UseBlockCursor();
+
+            TerminalSize size = _console.Size;
+            if (size != _lastSize)
+            {
+                _console.Clear();
+                _lastSize = size;
+            }
+
+            session.Layout = EditorLayout.From(size);
+            session.EnsureCursorVisible();
+
+            DrawTitle(session);
+            DrawEditor(session);
+            int inputColumn = DrawFileInput(session, query, queryCursor, currentDir);
+            DrawShortcuts(session);
+            DrawFileBrowser(session, entries, selectedIndex);
+            _console.MoveCursor(session.Layout.StatusRow, inputColumn);
+            _console.UseBlockCursor();
+            _console.ShowCursor(true);
+            _console.EndFrame();
+        }
+
         private void DrawTitle(EditorSession session)
         {
             var doc = session.Document;
@@ -347,6 +380,83 @@ namespace NEdit.Editor
             }
 
             _console.WriteAt(row, left, line, ConsoleStyle.ShortcutKey);
+        }
+
+        private int DrawFileInput(EditorSession session, string query, int cursor, string currentDir)
+        {
+            int row = session.Layout.StatusRow;
+            int columns = session.Layout.Columns;
+            string dirLabel = currentDir.Length > columns / 3 ? ".." + currentDir[^(columns / 3)..] : currentDir;
+            string prefix = $"Open [{dirLabel}]: ";
+            int inputWidth = Math.Max(0, columns - prefix.Length);
+            int start = 0;
+            if (query.Length > inputWidth)
+            {
+                start = Math.Clamp(cursor - inputWidth + 1, 0, query.Length - inputWidth);
+            }
+
+            string visibleInput = inputWidth == 0
+                ? string.Empty
+                : query.Substring(start, Math.Min(inputWidth, query.Length - start));
+            string text = Fit(prefix + visibleInput, columns);
+            WritePadded(row, text, ConsoleStyle.Status);
+            return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
+        }
+
+        private void DrawFileBrowser(EditorSession session, IReadOnlyList<FileEntry> entries, int selectedIndex)
+        {
+            int height = session.Layout.StatusRow - session.Layout.EditorTop;
+            int columns = session.Layout.Columns;
+            if (height < 3 || columns < 10)
+            {
+                return;
+            }
+
+            int width = Math.Min(columns, Math.Clamp(columns / 2, 30, 58));
+            int left = Math.Max(0, columns - width);
+            int top = session.Layout.EditorTop;
+            int bottom = top + height - 1;
+            int innerWidth = Math.Max(0, width - 2);
+
+            DrawPanelBorder(top, left, width, " Open File ");
+            for (int row = top + 1; row < bottom; row++)
+            {
+                _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
+                WritePadded(row, left + 1, ReadOnlySpan<char>.Empty, innerWidth, ConsoleStyle.Normal);
+                _console.WriteAt(row, left + width - 1, "|", ConsoleStyle.ShortcutKey);
+            }
+
+            _console.WriteAt(bottom, left, "+" + new string('-', Math.Max(0, width - 2)) + "+", ConsoleStyle.ShortcutKey);
+
+            int listTop = top + 1;
+            int listRows = Math.Max(0, bottom - listTop);
+            if (entries.Count == 0)
+            {
+                if (listRows > 0)
+                {
+                    _console.WriteAt(listTop, left + 1, Fit(" No files found", innerWidth).PadRight(innerWidth), ConsoleStyle.Normal);
+                }
+
+                return;
+            }
+
+            int first = 0;
+            if (selectedIndex >= listRows)
+            {
+                first = selectedIndex - listRows + 1;
+            }
+
+            for (int i = 0; i < listRows && first + i < entries.Count; i++)
+            {
+                int entryIndex = first + i;
+                FileEntry entry = entries[entryIndex];
+                bool selected = entryIndex == selectedIndex;
+                string icon = entry.IsDirectory ? "/" : " ";
+                string marker = selected ? ">" : " ";
+                string label = $"{marker}{icon} {entry.Name}";
+                ConsoleStyle style = selected ? ConsoleStyle.Selection : entry.IsDirectory ? ConsoleStyle.LineNumber : ConsoleStyle.Normal;
+                _console.WriteAt(listTop + i, left + 1, Fit(label, innerWidth).PadRight(innerWidth), style);
+            }
         }
 
         private void PositionCursor(EditorSession session)

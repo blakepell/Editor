@@ -105,6 +105,14 @@ namespace NEdit.Commands
                         context => context?.Session.InsertDateTime(),
                         context => context?.Session.IsReadOnly == false)),
                 new EditorCommand(
+                    "Open File",
+                    "Browse and open a file from the current directory.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useFilePicker: true),
+                new EditorCommand(
                     "Show Working Directory",
                     "Display the current working directory in the status bar.",
                     null,

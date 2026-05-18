@@ -401,6 +401,12 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseFilePicker)
+            {
+                OpenFile();
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 
@@ -420,6 +426,149 @@ namespace NEdit.Editor
                 : _commandContext;
 
             command.Execute(context);
+        }
+
+        private void OpenFile()
+        {
+            string browserDir = Directory.GetCurrentDirectory();
+            string query = string.Empty;
+            int cursor = 0;
+            int selectedIndex = 0;
+
+            while (true)
+            {
+                IReadOnlyList<FileEntry> entries = GetFileEntries(browserDir, query);
+                if (selectedIndex >= entries.Count)
+                {
+                    selectedIndex = Math.Max(0, entries.Count - 1);
+                }
+
+                _renderer.RenderFileBrowser(_session, query, cursor, entries, selectedIndex, browserDir);
+                ConsoleKeyInfo key = _session.Console.ReadKey();
+
+                if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.Enter)
+                {
+                    if (entries.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    FileEntry selected = entries[selectedIndex];
+                    if (selected.IsDirectory)
+                    {
+                        browserDir = Path.GetFullPath(Path.Combine(browserDir, selected.Name));
+                        query = string.Empty;
+                        cursor = 0;
+                        selectedIndex = 0;
+                    }
+                    else
+                    {
+                        string path = Path.GetFullPath(Path.Combine(browserDir, selected.Name));
+                        if (_session.Document.Modified)
+                        {
+                            YesNoCancel answer = PromptYesNoCancel("Save modified buffer?");
+                            if (answer is YesNoCancel.Cancel)
+                            {
+                                _session.SetStatus("Cancelled");
+                                return;
+                            }
+
+                            if (answer is YesNoCancel.Yes && !WriteOut())
+                            {
+                                return;
+                            }
+                        }
+
+                        _session.OpenFile(path);
+                        return;
+                    }
+                }
+                else if (key.Key is ConsoleKey.UpArrow)
+                {
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                }
+                else if (key.Key is ConsoleKey.DownArrow)
+                {
+                    selectedIndex = Math.Min(Math.Max(0, entries.Count - 1), selectedIndex + 1);
+                }
+                else if (key.Key is ConsoleKey.Backspace)
+                {
+                    if (cursor > 0)
+                    {
+                        query = query.Remove(cursor - 1, 1);
+                        cursor--;
+                        selectedIndex = 0;
+                    }
+                    else
+                    {
+                        string? parent = Path.GetDirectoryName(browserDir);
+                        if (parent is not null)
+                        {
+                            browserDir = parent;
+                            selectedIndex = 0;
+                        }
+                    }
+                }
+                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                {
+                    query = query.Remove(cursor, 1);
+                    selectedIndex = 0;
+                }
+                else if (key.Key is ConsoleKey.LeftArrow)
+                {
+                    cursor = Math.Max(0, cursor - 1);
+                }
+                else if (key.Key is ConsoleKey.RightArrow)
+                {
+                    cursor = Math.Min(query.Length, cursor + 1);
+                }
+                else if (key.Key is ConsoleKey.Home)
+                {
+                    cursor = 0;
+                }
+                else if (key.Key is ConsoleKey.End)
+                {
+                    cursor = query.Length;
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    cursor++;
+                    selectedIndex = 0;
+                }
+            }
+        }
+
+        private static IReadOnlyList<FileEntry> GetFileEntries(string dir, string filter)
+        {
+            try
+            {
+                IEnumerable<FileEntry> dirs = Directory.GetDirectories(dir)
+                    .Select(d => new FileEntry(Path.GetFileName(d) ?? d, true));
+                IEnumerable<FileEntry> files = Directory.GetFiles(dir)
+                    .Select(f => new FileEntry(Path.GetFileName(f) ?? f, false));
+
+                IEnumerable<FileEntry> all = dirs.Concat(files);
+                if (!string.IsNullOrWhiteSpace(filter))
+                {
+                    all = all.Where(e => e.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+                }
+
+                return all
+                    .OrderBy(e => !e.IsDirectory)
+                    .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch
+            {
+                return [];
+            }
         }
 
         private void ShowHelp()

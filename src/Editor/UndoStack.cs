@@ -17,6 +17,12 @@ namespace NEdit.Editor
         public bool CanUndo => _undo.Count > 0;
         public bool CanRedo => _redo.Count > 0;
 
+        public void Clear()
+        {
+            _undo.Clear();
+            _redo.Clear();
+        }
+
         public bool Push(UndoRecord record)
         {
             if (Same(record.BeforeLines, record.AfterLines) && record.BeforeCursor == record.AfterCursor)

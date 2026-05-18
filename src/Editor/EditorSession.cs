@@ -701,6 +701,25 @@ namespace NEdit.Editor
         public void ShowCurrentDirectory() =>
             SetStatus($"Directory: {Directory.GetCurrentDirectory()}");
 
+        /// <summary>
+        /// Loads a new file into the editor, replacing the current document and resetting all state.
+        /// </summary>
+        public void OpenFile(string path)
+        {
+            EndTypingGroup();
+            Document = DocumentBuffer.Load(path, Options);
+            Cursor = new Position(0, 0);
+            DesiredColumn = 0;
+            ViewTop = 0;
+            ViewLeft = 0;
+            Selection = null;
+            SuggestedSavePath = null;
+            _undoStack.Clear();
+            _typingBefore = null;
+            RefreshSyntax();
+            SetStatusSuccess($"Opened: {Document.DisplayName}");
+        }
+
         public void InsertDate()
         {
             if (IsReadOnly)
