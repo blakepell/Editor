@@ -242,7 +242,15 @@ namespace NEdit.Editor
         private bool Save()
         {
             _session.EndTypingGroup();
-            string currentName = _session.Document.FilePath ?? _session.SuggestedSavePath ?? string.Empty;
+
+            // If the file already has a known path, save silently without prompting.
+            if (_session.Document.FilePath is not null)
+            {
+                return _session.Save();
+            }
+
+            // New or unsaved buffer — prompt for a filename.
+            string currentName = _session.SuggestedSavePath ?? string.Empty;
             string? fileName = Prompt("File Name to Write", currentName, allowEmpty: false);
             if (fileName is null)
             {
