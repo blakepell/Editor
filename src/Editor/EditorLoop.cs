@@ -6,11 +6,18 @@
 
 using NEdit.Commands;
 using NEdit.Memory;
+using System.Diagnostics;
 
 namespace NEdit.Editor
 {
     internal sealed class EditorLoop
     {
+        /// <summary>Maps file extensions to the shell command template and whether to run in the file's directory.</summary>
+        private static readonly Dictionary<string, (string Command, bool UseFileDirectory)> FileRunners = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [".ps1"] = ("pwsh.exe \"{file}\"", false),
+            [".c"] = ("make", true),
+        };
         private readonly EditorSession _session;
         private readonly Renderer _renderer;
         private readonly AppSettings _appSettings;
@@ -120,9 +127,9 @@ namespace NEdit.Editor
             {
                 _session.Tab();
             }
-            else if (key.Key is ConsoleKey.F12)
+            else if (key.Key is ConsoleKey.F5)
             {
-                ShowHelp();
+                RunCurrentFile();
             }
             else if (IsCtrl(key, 'T'))
             {
@@ -140,9 +147,9 @@ namespace NEdit.Editor
             {
                 Exit();
             }
-            else if (IsCtrl(key, 'O'))
+            else if (IsCtrl(key, 'S'))
             {
-                WriteOut();
+                Save();
             }
             else if (IsCtrl(key, 'R'))
             {
@@ -219,7 +226,7 @@ namespace NEdit.Editor
                     return;
                 }
 
-                if (answer is YesNoCancel.Yes && !WriteOut())
+                if (answer is YesNoCancel.Yes && !Save())
                 {
                     return;
                 }
@@ -228,7 +235,7 @@ namespace NEdit.Editor
             _session.Running = false;
         }
 
-        private bool WriteOut()
+        private bool Save()
         {
             _session.EndTypingGroup();
             string currentName = _session.Document.FilePath ?? _session.SuggestedSavePath ?? string.Empty;
@@ -479,7 +486,7 @@ namespace NEdit.Editor
                                 return;
                             }
 
-                            if (answer is YesNoCancel.Yes && !WriteOut())
+                            if (answer is YesNoCancel.Yes && !Save())
                             {
                                 return;
                             }
@@ -571,31 +578,88 @@ namespace NEdit.Editor
             }
         }
 
-        private void ShowHelp()
+        private void RunCurrentFile()
         {
             _session.EndTypingGroup();
-            string[] lines =
-            [
-                $"{AppSettings.AppName} v{AppSettings.BuildVersion} Help",
-                "",
-                "^X Exit       ^O Write Out   ^R Read File   ^W Where Is",
-                "^\\ Replace    ^K Cut         ^U Paste       ^6 Mark",
-                "M-6 Copy      M-U Undo       M-E Redo       ^_ Go To Line",
-                "^G Insert GUID at cursor.    ^L toggles line numbers.",
-                "^T opens the command palette.",
-                "Ctrl+Home goto first line.   Ctrl+End goto last line.",
-                "",
-                "Press any key to return."
-            ];
 
-            _session.Console.Clear();
-            for (int i = 0; i < lines.Length && i < _session.Console.Size.Rows; i++)
+            string? filePath = _session.Document.FilePath;
+            if (string.IsNullOrWhiteSpace(filePath))
             {
-                _session.Console.WriteAt(i, 0, lines[i].PadRight(_session.Console.Size.Columns), ConsoleStyle.Normal);
+                _session.SetStatus("Save the file first before running.", alert: true);
+                return;
             }
 
-            _ = _session.Console.ReadKey();
-            _session.Console.Clear();
+            string ext = Path.GetExtension(filePath);
+            if (!FileRunners.TryGetValue(ext, out var runner))
+            {
+                _session.SetStatus($"No runner registered for {(string.IsNullOrEmpty(ext) ? "this file type" : ext + " files")}.", alert: true);
+                return;
+            }
+
+            if (_session.Document.Modified)
+            {
+                YesNoCancel answer = PromptYesNoCancel("Save before running?");
+                if (answer is YesNoCancel.Cancel)
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (answer is YesNoCancel.Yes && !Save())
+                {
+                    return;
+                }
+            }
+
+            string command = runner.Command.Replace("{file}", filePath);
+            string? workingDir = runner.UseFileDirectory ? Path.GetDirectoryName(filePath) : null;
+
+            _session.Console.LeaveEditorMode();
+
+            int exitCode = -1;
+            try
+            {
+                var psi = new ProcessStartInfo { UseShellExecute = false };
+
+                if (workingDir is not null)
+                {
+                    psi.WorkingDirectory = workingDir;
+                }
+
+                if (OperatingSystem.IsWindows())
+                {
+                    psi.FileName = "cmd.exe";
+                    psi.Arguments = "/c " + command;
+                }
+                else
+                {
+                    psi.FileName = "/bin/sh";
+                    psi.Arguments = "-c " + command;
+                }
+
+                using Process? process = Process.Start(psi);
+                if (process is not null)
+                {
+                    process.WaitForExit();
+                    exitCode = process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+
+            Console.WriteLine();
+            Console.Write(exitCode == 0
+                ? "Completed (exit 0). Press any key to return to editor..."
+                : $"Exit code {exitCode}. Press any key to return to editor...");
+            Console.ReadKey(intercept: true);
+
+            _session.Console.EnterEditorMode();
+            _session.SetStatus(
+                exitCode == 0 ? $"Run: {Path.GetFileName(filePath)}" : $"Run: {Path.GetFileName(filePath)} (exit {exitCode})",
+                alert: exitCode != 0);
         }
 
         private string? Prompt(string label, string initial, bool allowEmpty)
