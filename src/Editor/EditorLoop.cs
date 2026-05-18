@@ -151,7 +151,7 @@ namespace NEdit.Editor
             {
                 OpenFile();
             }
-            else if (IsCtrl(key, 'S'))
+            else if (IsCtrlAlt(key, 'S'))
             {
                 Save();
             }
@@ -779,6 +779,12 @@ namespace NEdit.Editor
         private static bool IsCtrlKey(ConsoleKeyInfo key, ConsoleKey consoleKey)
         {
             return key.Key == consoleKey && (key.Modifiers & ConsoleModifiers.Control) != 0;
+        }
+
+        private static bool IsCtrlAlt(ConsoleKeyInfo key, char letter)
+        {
+            return (key.Modifiers & (ConsoleModifiers.Control | ConsoleModifiers.Alt)) == (ConsoleModifiers.Control | ConsoleModifiers.Alt)
+                && key.Key.ToString().Equals(char.ToUpperInvariant(letter).ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsAlt(ConsoleKeyInfo key, char value)
