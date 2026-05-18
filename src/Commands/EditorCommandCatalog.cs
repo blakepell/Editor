@@ -137,7 +137,16 @@ namespace NEdit.Commands
                         RunShell,
                         context => context is not null),
                     alias: "shell",
-                    argumentPrompt: "Command")
+                    argumentPrompt: "Command"),
+                new EditorCommand(
+                    "Goto Line",
+                    "Move the cursor to the specified line number.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        GotoLine,
+                        context => context is not null),
+                    alias: "goto",
+                    argumentPrompt: "Line")
             ]);
         }
 
@@ -325,6 +334,31 @@ namespace NEdit.Commands
             context.Session.SetStatus(
                 exitCode == 0 ? $"Shell: {command}" : $"Shell: {command} (exit {exitCode})",
                 alert: exitCode != 0);
+        }
+
+        private static void GotoLine(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? input = context.Argument?.Trim();
+            if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int lineNumber))
+            {
+                context.Session.SetStatus("Enter a line number.", alert: true);
+                return;
+            }
+
+            int lineCount = context.Session.Document.LineCount;
+            if (lineNumber < 1 || lineNumber > lineCount)
+            {
+                context.Session.SetStatus($"Line {lineNumber} does not exist (document has {lineCount} line{(lineCount == 1 ? string.Empty : "s")}).", alert: true);
+                return;
+            }
+
+            context.Session.MoveTo(lineNumber - 1, 0);
+            context.Session.SetStatus($"Line {lineNumber}");
         }
     }
 }
