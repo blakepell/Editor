@@ -91,12 +91,14 @@ namespace NEdit.Editor
         {
             _frame ??= new StringBuilder(4096);
             _frame.Clear();
+            _frame.Append("\x1b[?2026h"); // begin synchronized update — defer rendering until EndFrame
         }
 
         public void EndFrame()
         {
             if (_frame is { Length: > 0 })
             {
+                _frame.Append("\x1b[?2026l"); // end synchronized update — render now
                 Console.Write(_frame.ToString());
             }
 
