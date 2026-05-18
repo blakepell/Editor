@@ -147,6 +147,10 @@ namespace NEdit.Editor
             {
                 Exit();
             }
+            else if (IsCtrl(key, 'O'))
+            {
+                OpenFile();
+            }
             else if (IsCtrl(key, 'S'))
             {
                 Save();
