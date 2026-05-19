@@ -464,7 +464,7 @@ namespace NEdit.Editor
             }
 
             DeleteSelectionWithoutUndo();
-            Cursor = Document.InsertText(Cursor, value.ToString());
+            Cursor = Document.InsertCharacter(Cursor, value);
             Document.Modified = true;
         }
 

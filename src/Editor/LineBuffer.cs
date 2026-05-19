@@ -13,7 +13,9 @@ namespace NEdit.Editor
     /// </summary>
     internal sealed class LineBuffer
     {
-        private readonly StringBuilder _text;
+        private string _text;
+        private StringBuilder? _builder;
+        private bool _textCurrent;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LineBuffer"/> class.
@@ -21,7 +23,8 @@ namespace NEdit.Editor
         /// <param name="text">The initial line text.</param>
         public LineBuffer(string text)
         {
-            _text = new StringBuilder(text);
+            _text = text;
+            _textCurrent = true;
         }
 
         /// <summary>
@@ -30,7 +33,7 @@ namespace NEdit.Editor
         /// <value>
         /// The current line length.
         /// </value>
-        public int Length => _text.Length;
+        public int Length => _builder?.Length ?? _text.Length;
 
         /// <summary>
         /// Gets the character at the specified index.
@@ -39,7 +42,7 @@ namespace NEdit.Editor
         /// <returns>
         /// The character at <paramref name="index" />.
         /// </returns>
-        public char this[int index] => _text[index];
+        public char this[int index] => _builder is null ? _text[index] : _builder[index];
 
         /// <summary>
         /// Inserts text at the specified index.
@@ -48,7 +51,14 @@ namespace NEdit.Editor
         /// <param name="text">The text to insert.</param>
         public void Insert(int index, string text)
         {
-            _text.Insert(Clamp(index), text);
+            if (text.Length == 0)
+            {
+                return;
+            }
+
+            StringBuilder builder = EnsureBuilder();
+            builder.Insert(Clamp(index), text);
+            _textCurrent = false;
         }
 
         /// <summary>
@@ -58,7 +68,9 @@ namespace NEdit.Editor
         /// <param name="value">The character to insert.</param>
         public void Insert(int index, char value)
         {
-            _text.Insert(Clamp(index), value);
+            StringBuilder builder = EnsureBuilder();
+            builder.Insert(Clamp(index), value);
+            _textCurrent = false;
         }
 
         /// <summary>
@@ -74,10 +86,13 @@ namespace NEdit.Editor
             }
 
             int start = Clamp(index);
-            int length = Math.Min(count, _text.Length - start);
+            StringBuilder? builder = _builder;
+            int textLength = builder?.Length ?? _text.Length;
+            int length = Math.Min(count, textLength - start);
             if (length > 0)
             {
-                _text.Remove(start, length);
+                EnsureBuilder().Remove(start, length);
+                _textCurrent = false;
             }
         }
 
@@ -91,7 +106,8 @@ namespace NEdit.Editor
         public string Substring(int index)
         {
             int start = Clamp(index);
-            return _text.ToString(start, _text.Length - start);
+            string text = ToString();
+            return text[start..];
         }
 
         /// <summary>
@@ -105,8 +121,9 @@ namespace NEdit.Editor
         public string Substring(int index, int count)
         {
             int start = Clamp(index);
-            int length = Math.Min(Math.Max(0, count), _text.Length - start);
-            return _text.ToString(start, length);
+            string text = ToString();
+            int length = Math.Min(Math.Max(0, count), text.Length - start);
+            return text.Substring(start, length);
         }
 
         /// <summary>
@@ -117,7 +134,14 @@ namespace NEdit.Editor
         public void AppendTo(StringBuilder builder, int index)
         {
             int start = Clamp(index);
-            builder.Append(_text, start, _text.Length - start);
+            if (_textCurrent)
+            {
+                builder.Append(_text.AsSpan(start));
+                return;
+            }
+
+            StringBuilder currentBuilder = _builder!;
+            builder.Append(currentBuilder, start, currentBuilder.Length - start);
         }
 
         /// <summary>
@@ -129,13 +153,32 @@ namespace NEdit.Editor
         public void AppendTo(StringBuilder builder, int index, int count)
         {
             int start = Clamp(index);
-            int length = Math.Min(Math.Max(0, count), _text.Length - start);
-            builder.Append(_text, start, length);
+            int textLength = _builder?.Length ?? _text.Length;
+            int length = Math.Min(Math.Max(0, count), textLength - start);
+            if (_textCurrent)
+            {
+                builder.Append(_text.AsSpan(start, length));
+                return;
+            }
+
+            builder.Append(_builder!, start, length);
         }
 
         /// <inheritdoc/>
-        public override string ToString() => _text.ToString();
+        public override string ToString()
+        {
+            if (_textCurrent)
+            {
+                return _text;
+            }
 
-        private int Clamp(int index) => Math.Clamp(index, 0, _text.Length);
+            _text = _builder!.ToString();
+            _textCurrent = true;
+            return _text;
+        }
+
+        private StringBuilder EnsureBuilder() => _builder ??= new StringBuilder(_text);
+
+        private int Clamp(int index) => Math.Clamp(index, 0, Length);
     }
 }

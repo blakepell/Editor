@@ -248,28 +248,35 @@ namespace NEdit.Editor
             int startLine = Math.Max(0, firstLine);
             int endLine = Math.Min(document.LineCount - 1, firstLine + lineCount - 1);
 
-            foreach (SyntaxRule rule in _syntax.Rules)
+            for (int lineIndex = startLine; lineIndex <= endLine; lineIndex++)
             {
-                if (rule.IsMultiline)
+                string text = document.LineAt(lineIndex).ToString();
+                if (text.Length == 0)
                 {
-                    AddMultilineSpans(document, startLine, endLine, rule, spansByLine);
                     continue;
                 }
 
-                for (int lineIndex = startLine; lineIndex <= endLine; lineIndex++)
+                List<HighlightSpan> spans = GetList(spansByLine, lineIndex);
+
+                foreach (SyntaxRule rule in _syntax.Rules)
                 {
-                    string text = document.LineAt(lineIndex).ToString();
-                    if (text.Length == 0)
+                    if (rule.IsMultiline)
                     {
                         continue;
                     }
-
-                    List<HighlightSpan> spans = GetList(spansByLine, lineIndex);
 
                     foreach (Regex pattern in rule.Patterns)
                     {
                         AddMatches(text, pattern, rule.Style, spans);
                     }
+                }
+            }
+
+            foreach (SyntaxRule rule in _syntax.Rules)
+            {
+                if (rule.IsMultiline)
+                {
+                    AddMultilineSpans(document, startLine, endLine, rule, spansByLine);
                 }
             }
 

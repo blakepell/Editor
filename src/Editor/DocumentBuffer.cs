@@ -126,11 +126,21 @@ namespace NEdit.Editor
                 _ => "\n"
             };
 
-            string text = string.Join(newline, Lines.Select(line => line.ToString()));
             string directory = Path.GetDirectoryName(Path.GetFullPath(target)) ?? ".";
             string temp = Path.Combine(directory, $".{Path.GetFileName(target)}.{Environment.ProcessId}.tmp");
 
-            File.WriteAllText(temp, text, Encoding);
+            using (var writer = new StreamWriter(temp, append: false, Encoding))
+            {
+                for (int i = 0; i < Lines.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        writer.Write(newline);
+                    }
+
+                    writer.Write(Lines[i].ToString());
+                }
+            }
 
             if (File.Exists(target))
             {
@@ -240,6 +250,12 @@ namespace NEdit.Editor
         public Position InsertText(Position position, string text)
         {
             position = Clamp(position);
+            if (text.IndexOf('\r') < 0 && text.IndexOf('\n') < 0)
+            {
+                Lines[position.Line].Insert(position.Column, text);
+                return new Position(position.Line, position.Column + text.Length);
+            }
+
             string normalized = text.Replace("\r\n", "\n").Replace('\r', '\n');
             string[] pieces = normalized.Split('\n');
 
@@ -262,6 +278,26 @@ namespace NEdit.Editor
             }
 
             return new Position(position.Line + pieces.Length - 1, pieces[^1].Length);
+        }
+
+        /// <summary>
+        /// Inserts a single character at the specified document position.
+        /// </summary>
+        /// <param name="position">The insertion position.</param>
+        /// <param name="value">The character to insert.</param>
+        /// <returns>
+        /// The position immediately after the inserted character.
+        /// </returns>
+        public Position InsertCharacter(Position position, char value)
+        {
+            if (value is '\r' or '\n')
+            {
+                return InsertText(position, "\n");
+            }
+
+            position = Clamp(position);
+            Lines[position.Line].Insert(position.Column, value);
+            return new Position(position.Line, position.Column + 1);
         }
 
         /// <summary>
