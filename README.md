@@ -1,17 +1,16 @@
 # nEdit
 
-nEdit is a terminal-based text editor written in C# for .NET. The
-project builds an executable named `nedit` and focuses on a small, practical
-editing experience for the console.
+nEdit is a cross platform terminal-based text editor written in C# for .NET.
+The project builds an executable named `nedit` which can be .NET assembly or
+a native assembly via AOT for Windows or Unix (not requiring the framework).
 
-The editor is Nano- or Pico-like in spirit: it uses familiar terminal editor
-conventions such as shortcut rows, status messages, and direct keyboard-driven
-editing. It is not a GNU nano clone, and compatibility with nano behavior is not
-the goal.
+![description](./assets/nedit1.png)
 
 ## Features
 
 - Terminal UI with title, status, editor, and shortcut rows.
+- `Ctrl+T` command list.
+- `Ctrl+O` file picker.
 - File loading and saving with encoding and newline detection.
 - Cursor movement, selection, cut/copy/paste, search, replace, undo, and redo.
 - Optional line numbers.
