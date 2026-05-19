@@ -104,6 +104,13 @@ namespace NEdit.Commands
                         context => context?.Session.InsertGuid(),
                         context => context?.Session.IsReadOnly == false)),
                 new EditorCommand(
+                    "Run Garbage Collector",
+                    "Run the garbage collector to free up memory.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        context => GC.Collect(),
+                        context => context is not null)),
+                new EditorCommand(
                     "Insert Date",
                     "Insert the current local date at the cursor.",
                     null,
