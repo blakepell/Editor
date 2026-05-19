@@ -13,7 +13,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
-    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <CopyOutputSymbolsToPublishDirectory>true</CopyOutputSymbolsToPublishDirectory>
     <InvariantGlobalization>true</InvariantGlobalization>
     <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
