@@ -204,6 +204,7 @@ namespace NEdit.Editor
     internal sealed class SyntaxHighlighter
     {
         private readonly SyntaxDefinition? _syntax;
+        private readonly Dictionary<int, (string Text, List<HighlightSpan> Spans)> _singleLineCache = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SyntaxHighlighter"/> class.
@@ -253,6 +254,16 @@ namespace NEdit.Editor
                 string text = document.LineAt(lineIndex).ToString();
                 if (text.Length == 0)
                 {
+                    _singleLineCache.Remove(lineIndex);
+                    continue;
+                }
+
+                if (_singleLineCache.TryGetValue(lineIndex, out var cached) && cached.Text == text)
+                {
+                    if (cached.Spans.Count > 0)
+                    {
+                        spansByLine[lineIndex] = cached.Spans;
+                    }
                     continue;
                 }
 
@@ -270,6 +281,8 @@ namespace NEdit.Editor
                         AddMatches(text, pattern, rule.Style, spans);
                     }
                 }
+
+                _singleLineCache[lineIndex] = (text, spans);
             }
 
             foreach (SyntaxRule rule in _syntax.Rules)
