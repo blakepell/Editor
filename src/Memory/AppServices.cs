@@ -10,14 +10,17 @@ using System.Diagnostics.CodeAnalysis;
 namespace NEdit.Memory
 {
     /// <summary>
-    /// Dependency Injection wrapper for applications allowing for late-binding/mutable container behavior.
+    /// Provides a mutable application service container for dependency injection.
     /// </summary>
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public class AppServices
     {
         /// <summary>
-        /// Mechanism for retrieving a service object.
+        /// Gets the current service provider.
         /// </summary>
+        /// <value>
+        /// The provider built from the registered services.
+        /// </value>
         public IServiceProvider ServiceProvider
         {
             get
@@ -38,26 +41,26 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Returns the instance of <see cref="AppServices"/>. If the instance has not yet
-        /// been created it will be created on this call.
+        /// Gets the singleton <see cref="AppServices"/> instance.
         /// </summary>
         private static AppServices Instance => _instance ?? GetInstance();
 
         /// <summary>
-        /// Internal reference for the <see cref="AppServices"/> instance.
+        /// Stores the singleton <see cref="AppServices"/> instance.
         /// </summary>
         private static volatile AppServices? _instance;
 
         /// <summary>
-        /// Global lock object used to protect access to both the Collection and the Provider.
-        /// Unified locking prevents race conditions during the Rebuild phase.
+        /// Synchronizes access to the service collection and provider.
         /// </summary>
         private static readonly Lock SyncLock = new();
 
         /// <summary>
-        /// A reference to the service collection so that services can be added at a time
-        /// later than the initial registration of objects.
+        /// Gets or sets the current service collection.
         /// </summary>
+        /// <value>
+        /// The mutable service registration collection.
+        /// </value>
         public static ServiceCollection ServiceCollection
         {
             get
@@ -77,7 +80,7 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Static constructor.
+        /// Initializes static members of the <see cref="AppServices"/> class.
         /// </summary>
         static AppServices()
         {
@@ -86,11 +89,9 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Initializes the dependencies via action which allows the caller to register classes
-        /// and interfaces. Init can only be called once but it allows the caller to pass in
-        /// an <see cref="Action"/> to handle registering the DI.
+        /// Initializes the service collection with caller-provided registrations.
         /// </summary>
-        /// <param name="action"></param>
+        /// <param name="action">The registration callback that configures services.</param>
         public static void Init(Action<ServiceCollection> action)
         {
             lock (SyncLock)
@@ -105,9 +106,9 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Registers a singleton type that will be created the first time it is used.
+        /// Registers a singleton service type.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The service type to register.</typeparam>
         public static void AddSingleton<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>() where T : class
         {
             lock (SyncLock)
@@ -125,8 +126,13 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Registers a type singleton with the specific instance provided.
+        /// Registers a singleton service instance.
         /// </summary>
+        /// <typeparam name="T">The service type to register.</typeparam>
+        /// <param name="instance">The service instance.</param>
+        /// <exception cref="InvalidOperationException">
+        /// A singleton registration already exists for <typeparamref name="T" />.
+        /// </exception>
         public static void AddSingleton<T>(T instance) where T : class
         {
             lock (SyncLock)
@@ -143,10 +149,13 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Registers a type and its instance as an object.
+        /// Registers a singleton service instance for the specified service type.
         /// </summary>
-        /// <param name="serviceType"></param>
-        /// <param name="implementationInstance"></param>
+        /// <param name="serviceType">The service type to register.</param>
+        /// <param name="implementationInstance">The service instance.</param>
+        /// <exception cref="InvalidOperationException">
+        /// A singleton registration already exists for <paramref name="serviceType" />.
+        /// </exception>
         public static void AddSingleton(Type serviceType, object implementationInstance)
         {
             lock (SyncLock)
@@ -162,9 +171,9 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Allows for the registration of dependency injected services via an <see cref="Action"/>.
+        /// Adds service registrations to the current service collection.
         /// </summary>
-        /// <param name="action"></param>
+        /// <param name="action">The registration callback that configures services.</param>
         public static void AddService(Action<ServiceCollection> action)
         {
             lock (SyncLock)
@@ -175,9 +184,12 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Gets a service of type <see cref="T"/>.
+        /// Gets a service of the specified type.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The service type to resolve.</typeparam>
+        /// <returns>
+        /// The resolved service instance, or <see langword="null" /> when the service is not registered.
+        /// </returns>
         public static T? GetService<T>()
         {
             return Instance.ServiceProvider.GetService<T>();
@@ -186,56 +198,75 @@ namespace NEdit.Memory
         /// <summary>
         /// Gets a service of the provided type.
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">The service type to resolve.</param>
+        /// <returns>
+        /// The resolved service instance, or <see langword="null" /> when the service is not registered.
+        /// </returns>
         public static object? GetService(Type type)
         {
             return Instance.ServiceProvider.GetService(type);
         }
 
         /// <summary>
-        /// Gets a service of type <see cref="T"/>. If the service doesn't exist an exception
-        /// will be thrown.
+        /// Gets a required service of the specified type.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The service type to resolve.</typeparam>
+        /// <returns>
+        /// The resolved service instance.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// No service is registered for <typeparamref name="T" />.
+        /// </exception>
         public static T GetRequiredService<T>() where T : notnull
         {
             return Instance.ServiceProvider.GetRequiredService<T>();
         }
 
         /// <summary>
-        /// Gets a service of the provided type. If the service doesn't exist an exception
-        /// will be thrown.
+        /// Gets a required service of the provided type.
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">The service type to resolve.</param>
+        /// <returns>
+        /// The resolved service instance.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">
+        /// No service is registered for <paramref name="type" />.
+        /// </exception>
         public static object GetRequiredService(Type type)
         {
             return Instance.ServiceProvider.GetRequiredService(type);
         }
 
         /// <summary>
-        /// Creates an instance of an object and injects any dependencies into it that
-        /// are required via the constructor of that object.
+        /// Creates an instance with constructor dependencies resolved from the service provider.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
+        /// <typeparam name="T">The type to create.</typeparam>
+        /// <returns>
+        /// The created instance.
+        /// </returns>
         public static T CreateInstance<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         {
             return ActivatorUtilities.CreateInstance<T>(Instance.ServiceProvider);
         }
 
         /// <summary>
-        /// Creates an instance of an object and injects any dependencies into it that
-        /// are required via the constructor of that object.
+        /// Creates an instance with constructor dependencies resolved from the service provider.
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">The type to create.</param>
+        /// <returns>
+        /// The created instance.
+        /// </returns>
         public static object CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type)
         {
             return ActivatorUtilities.CreateInstance(Instance.ServiceProvider, type);
         }
 
         /// <summary>
-        /// Gets the current instance or creates a new one.
+        /// Gets the current instance or creates a new instance.
         /// </summary>
+        /// <returns>
+        /// The singleton <see cref="AppServices"/> instance.
+        /// </returns>
         private static AppServices GetInstance()
         {
             // Double-check locking for performance and thread safety
@@ -251,8 +282,7 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// Updates the <see cref="ServiceProvider"/> with the contents of the services registered
-        /// in the <see cref="ServiceCollection"/>.
+        /// Rebuilds the <see cref="ServiceProvider"/> from the current <see cref="ServiceCollection"/>.
         /// </summary>
         public static void BuildServiceProvider()
         {
@@ -265,9 +295,12 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// If a type has been registered with the DI container.
+        /// Determines whether a service type has been registered.
         /// </summary>
-        /// <param name="type"></param>
+        /// <param name="type">The service type to inspect.</param>
+        /// <returns>
+        /// <see langword="true" /> if the service type is registered; otherwise, <see langword="false" />.
+        /// </returns>
         public static bool IsRegistered(Type type)
         {
             lock (SyncLock)
@@ -277,9 +310,12 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// If a type has been registered with the DI container.
+        /// Determines whether a service type has been registered.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The service type to inspect.</typeparam>
+        /// <returns>
+        /// <see langword="true" /> if the service type is registered; otherwise, <see langword="false" />.
+        /// </returns>
         public static bool IsRegistered<T>()
         {
             lock (SyncLock)
@@ -289,9 +325,12 @@ namespace NEdit.Memory
         }
 
         /// <summary>
-        /// If a singleton instance / type has been registered with the DI container.
+        /// Determines whether a singleton service type has been registered.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">The service type to inspect.</typeparam>
+        /// <returns>
+        /// <see langword="true" /> if a singleton service is registered; otherwise, <see langword="false" />.
+        /// </returns>
         public static bool IsSingletonRegistered<T>()
         {
             lock (SyncLock)

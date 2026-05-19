@@ -8,6 +8,9 @@ using System.Text;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Represents the editable document model for a loaded file or untitled buffer.
+    /// </summary>
     internal sealed class DocumentBuffer
     {
         private DocumentBuffer(string? filePath, List<LineBuffer> lines, Encoding encoding, NewLineKind newLineKind)
@@ -18,13 +21,62 @@ namespace NEdit.Editor
             NewLineKind = newLineKind;
         }
 
+        /// <summary>
+        /// Gets or sets the file path associated with the buffer.
+        /// </summary>
+        /// <value>
+        /// The file path, or <see langword="null" /> for an untitled buffer.
+        /// </value>
         public string? FilePath { get; set; }
+
+        /// <summary>
+        /// Gets the editable lines in the buffer.
+        /// </summary>
+        /// <value>
+        /// The line collection.
+        /// </value>
         public List<LineBuffer> Lines { get; }
+
+        /// <summary>
+        /// Gets the encoding used when saving the buffer.
+        /// </summary>
+        /// <value>
+        /// The detected or default text encoding.
+        /// </value>
         public Encoding Encoding { get; private set; }
+
+        /// <summary>
+        /// Gets the newline sequence used when saving the buffer.
+        /// </summary>
+        /// <value>
+        /// One of the enumeration values that specifies the newline style.
+        /// </value>
         public NewLineKind NewLineKind { get; private set; }
+
+        /// <summary>
+        /// Gets or sets a value that indicates whether the buffer has unsaved edits.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the buffer has unsaved changes; otherwise, <see langword="false" />.
+        /// </value>
         public bool Modified { get; set; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the source file is read-only.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if edits should be blocked because the file is read-only; otherwise, <see langword="false" />.
+        /// </value>
         public bool ReadOnlyFromFile { get; private set; }
 
+        /// <summary>
+        /// Loads a document buffer from disk or creates an empty buffer.
+        /// </summary>
+        /// <param name="path">The file path to load, or <see langword="null" /> for a new buffer.</param>
+        /// <param name="options">The editor options that affect loading behavior.</param>
+        /// <returns>
+        /// The loaded document buffer.
+        /// </returns>
         public static DocumentBuffer Load(string? path, EditorOptions options)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -57,6 +109,13 @@ namespace NEdit.Editor
             return buffer;
         }
 
+        /// <summary>
+        /// Saves the buffer to disk.
+        /// </summary>
+        /// <param name="path">The target file path, or <see langword="null" /> to use <see cref="FilePath" />.</param>
+        /// <exception cref="InvalidOperationException">
+        /// No file name is available for the save operation.
+        /// </exception>
         public void Save(string? path = null)
         {
             string target = path ?? FilePath ?? throw new InvalidOperationException("No file name");
@@ -88,12 +147,38 @@ namespace NEdit.Editor
             ReadOnlyFromFile = false;
         }
 
+        /// <summary>
+        /// Gets the display name shown in the title bar.
+        /// </summary>
+        /// <value>
+        /// The file path, or <c>New Buffer</c> for an untitled buffer.
+        /// </value>
         public string DisplayName => string.IsNullOrEmpty(FilePath) ? "New Buffer" : FilePath;
 
+        /// <summary>
+        /// Gets the number of lines in the buffer.
+        /// </summary>
+        /// <value>
+        /// The current line count.
+        /// </value>
         public int LineCount => Lines.Count;
 
+        /// <summary>
+        /// Gets a line by index, clamping the index into the valid document range.
+        /// </summary>
+        /// <param name="index">The zero-based line index.</param>
+        /// <returns>
+        /// The requested line.
+        /// </returns>
         public LineBuffer LineAt(int index) => Lines[Math.Clamp(index, 0, Lines.Count - 1)];
 
+        /// <summary>
+        /// Clamps a document position into the valid buffer range.
+        /// </summary>
+        /// <param name="position">The position to clamp.</param>
+        /// <returns>
+        /// The nearest valid document position.
+        /// </returns>
         public Position Clamp(Position position)
         {
             int line = Math.Clamp(position.Line, 0, Lines.Count - 1);
@@ -101,6 +186,14 @@ namespace NEdit.Editor
             return new Position(line, column);
         }
 
+        /// <summary>
+        /// Gets text from the specified document range.
+        /// </summary>
+        /// <param name="start">The starting position.</param>
+        /// <param name="end">The ending position.</param>
+        /// <returns>
+        /// The text contained in the range.
+        /// </returns>
         public string GetText(Position start, Position end)
         {
             (start, end) = Order(start, end);
@@ -123,6 +216,12 @@ namespace NEdit.Editor
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Replaces a document range with the supplied text.
+        /// </summary>
+        /// <param name="start">The starting position.</param>
+        /// <param name="end">The ending position.</param>
+        /// <param name="replacement">The replacement text.</param>
         public void ReplaceRange(Position start, Position end, string replacement)
         {
             (start, end) = Order(Clamp(start), Clamp(end));
@@ -130,6 +229,14 @@ namespace NEdit.Editor
             InsertText(start, replacement);
         }
 
+        /// <summary>
+        /// Inserts text at the specified document position.
+        /// </summary>
+        /// <param name="position">The insertion position.</param>
+        /// <param name="text">The text to insert.</param>
+        /// <returns>
+        /// The position immediately after the inserted text.
+        /// </returns>
         public Position InsertText(Position position, string text)
         {
             position = Clamp(position);
@@ -157,6 +264,11 @@ namespace NEdit.Editor
             return new Position(position.Line + pieces.Length - 1, pieces[^1].Length);
         }
 
+        /// <summary>
+        /// Deletes the specified document range.
+        /// </summary>
+        /// <param name="start">The starting position.</param>
+        /// <param name="end">The ending position.</param>
         public void DeleteRange(Position start, Position end)
         {
             (start, end) = Order(Clamp(start), Clamp(end));
@@ -177,6 +289,14 @@ namespace NEdit.Editor
             Lines.RemoveRange(start.Line + 1, end.Line - start.Line);
         }
 
+        /// <summary>
+        /// Orders two positions from earliest to latest.
+        /// </summary>
+        /// <param name="a">The first position.</param>
+        /// <param name="b">The second position.</param>
+        /// <returns>
+        /// The ordered start and end positions.
+        /// </returns>
         public static (Position Start, Position End) Order(Position a, Position b)
         {
             return a.CompareTo(b) <= 0 ? (a, b) : (b, a);

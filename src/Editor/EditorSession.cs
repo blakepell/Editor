@@ -6,6 +6,9 @@
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Stores mutable editor state and applies editing operations to a document.
+    /// </summary>
     internal sealed class EditorSession
     {
         private static readonly Lazy<SyntaxLibrary> Syntaxes = new(SyntaxLibrary.LoadEmbedded);
@@ -14,6 +17,12 @@ namespace NEdit.Editor
         private Position _typingCursorBefore;
         private SyntaxHighlighter _highlighter;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EditorSession"/> class.
+        /// </summary>
+        /// <param name="document">The document buffer to edit.</param>
+        /// <param name="options">The editor options for the session.</param>
+        /// <param name="console">The console driver used for terminal state.</param>
         public EditorSession(DocumentBuffer document, EditorOptions options, IConsoleDriver console)
         {
             Document = document;
@@ -23,26 +32,148 @@ namespace NEdit.Editor
             _highlighter = new SyntaxHighlighter(Syntaxes.Value.FindForFile(document.FilePath));
         }
 
+        /// <summary>
+        /// Gets the active document buffer.
+        /// </summary>
+        /// <value>
+        /// The document currently loaded in the editor.
+        /// </value>
         public DocumentBuffer Document { get; private set; }
+
+        /// <summary>
+        /// Gets the editor options for the session.
+        /// </summary>
+        /// <value>
+        /// The mutable editor options.
+        /// </value>
         public EditorOptions Options { get; }
+
+        /// <summary>
+        /// Gets the console driver used by the session.
+        /// </summary>
+        /// <value>
+        /// The terminal I/O abstraction.
+        /// </value>
         public IConsoleDriver Console { get; }
+
+        /// <summary>
+        /// Gets the current cursor position.
+        /// </summary>
+        /// <value>
+        /// The zero-based document position.
+        /// </value>
         public Position Cursor { get; private set; }
+
+        /// <summary>
+        /// Gets the selection mark position.
+        /// </summary>
+        /// <value>
+        /// The mark position, or <see langword="null" /> when selection is inactive.
+        /// </value>
         public Position? Selection { get; private set; }
+
+        /// <summary>
+        /// Gets the first visible document line.
+        /// </summary>
+        /// <value>
+        /// The zero-based top line index.
+        /// </value>
         public int ViewTop { get; private set; }
+
+        /// <summary>
+        /// Gets the first visible document column.
+        /// </summary>
+        /// <value>
+        /// The zero-based left column index.
+        /// </value>
         public int ViewLeft { get; private set; }
+
+        /// <summary>
+        /// Gets the preferred column used for vertical cursor movement.
+        /// </summary>
+        /// <value>
+        /// The zero-based desired column.
+        /// </value>
         public int DesiredColumn { get; private set; }
+
+        /// <summary>
+        /// Gets the editor clipboard text.
+        /// </summary>
+        /// <value>
+        /// The text copied or cut by the editor.
+        /// </value>
         public string Clipboard { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the current terminal layout.
+        /// </summary>
+        /// <value>
+        /// The renderer layout for the current terminal size.
+        /// </value>
         public EditorLayout Layout { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value that indicates whether the input loop should continue.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the editor should keep running; otherwise, <see langword="false" />.
+        /// </value>
         public bool Running { get; set; } = true;
+
+        /// <summary>
+        /// Gets the current status bar message.
+        /// </summary>
+        /// <value>
+        /// The message displayed in the status bar.
+        /// </value>
         public string StatusMessage { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// Gets the style used for the current status bar message.
+        /// </summary>
+        /// <value>
+        /// The status style override, or <see langword="null" /> to use the default status style.
+        /// </value>
         public ConsoleStyle? StatusStyle { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the most recent search term.
+        /// </summary>
+        /// <value>
+        /// The last search text, or <see langword="null" /> when no search has run.
+        /// </value>
         public string? LastSearch { get; set; }
+
+        /// <summary>
+        /// Gets the suggested save path for an untitled buffer.
+        /// </summary>
+        /// <value>
+        /// The suggested path, or <see langword="null" /> when no suggestion is available.
+        /// </value>
         public string? SuggestedSavePath { get; private set; }
 
+        /// <summary>
+        /// Gets a value that indicates whether the current document is read-only.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if editing commands should be blocked; otherwise, <see langword="false" />.
+        /// </value>
         public bool IsReadOnly => Options.ReadOnly || Document.ReadOnlyFromFile;
 
+        /// <summary>
+        /// Gets a value that indicates whether a non-empty selection exists.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if text is selected; otherwise, <see langword="false" />.
+        /// </value>
         public bool HasSelection => SelectionRange is not null;
 
+        /// <summary>
+        /// Gets the current ordered selection range.
+        /// </summary>
+        /// <value>
+        /// The selected range, or <see langword="null" /> when there is no non-empty selection.
+        /// </value>
         public (Position Start, Position End)? SelectionRange
         {
             get
@@ -57,13 +188,41 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Gets the width of the line number margin.
+        /// </summary>
+        /// <value>
+        /// The margin width in columns, or <c>0</c> when line numbers are disabled.
+        /// </value>
         public int LineNumberMargin => Options.LineNumbers ? Math.Max(3, Document.LineCount.ToString().Length + 1) : 0;
 
+        /// <summary>
+        /// Gets syntax highlight spans for a single line.
+        /// </summary>
+        /// <param name="lineIndex">The zero-based line index.</param>
+        /// <returns>
+        /// The highlight spans for the requested line.
+        /// </returns>
         public IReadOnlyList<HighlightSpan> GetHighlightSpans(int lineIndex) => _highlighter.Highlight(Document, lineIndex);
 
+        /// <summary>
+        /// Gets syntax highlight spans for a range of lines.
+        /// </summary>
+        /// <param name="firstLine">The first zero-based line index.</param>
+        /// <param name="lineCount">The number of lines to highlight.</param>
+        /// <returns>
+        /// A map of line indexes to highlight spans.
+        /// </returns>
         public Dictionary<int, List<HighlightSpan>> GetHighlightSpans(int firstLine, int lineCount) =>
             _highlighter.HighlightRange(Document, firstLine, lineCount);
 
+        /// <summary>
+        /// Sets the current status bar message.
+        /// </summary>
+        /// <param name="message">The status message.</param>
+        /// <param name="alert"><see langword="true" /> to display the message as an alert; otherwise, <see langword="false" />.</param>
+        /// <param name="foreground">The optional foreground color override.</param>
+        /// <param name="background">The optional background color override.</param>
         public void SetStatus(string message, bool alert = false, ConsoleColor? foreground = null, ConsoleColor? background = null)
         {
             StatusMessage = message;
@@ -81,22 +240,39 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Sets a success status bar message.
+        /// </summary>
+        /// <param name="message">The status message.</param>
         public void SetStatusSuccess(string message)
         {
             SetStatus(message, false, ConsoleColor.White, ConsoleColor.DarkGreen);
         }
 
+        /// <summary>
+        /// Sets a warning status bar message.
+        /// </summary>
+        /// <param name="message">The status message.</param>
         public void SetStatusWarning(string message)
         {
             SetStatus(message, false, ConsoleColor.White, ConsoleColor.DarkYellow);
         }
 
+        /// <summary>
+        /// Clears the status bar message and style override.
+        /// </summary>
         public void ClearStatus()
         {
             StatusMessage = string.Empty;
             StatusStyle = null;
         }
 
+        /// <summary>
+        /// Moves the cursor to a document position.
+        /// </summary>
+        /// <param name="line">The zero-based line index.</param>
+        /// <param name="column">The zero-based column index.</param>
+        /// <param name="preserveDesiredColumn"><see langword="true" /> to keep the current desired column; otherwise, <see langword="false" />.</param>
         public void MoveTo(int line, int column, bool preserveDesiredColumn = false)
         {
             Cursor = Document.Clamp(new Position(line, column));
@@ -106,6 +282,10 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Moves the cursor one character to the left.
+        /// </summary>
+        /// <param name="extendSelection"><see langword="true" /> to extend the active selection; otherwise, <see langword="false" />.</param>
         public void MoveLeft(bool extendSelection = false)
         {
             BeginSelectionExtension(extendSelection);
@@ -121,6 +301,10 @@ namespace NEdit.Editor
             EndSelectionExtension(extendSelection);
         }
 
+        /// <summary>
+        /// Moves the cursor one character to the right.
+        /// </summary>
+        /// <param name="extendSelection"><see langword="true" /> to extend the active selection; otherwise, <see langword="false" />.</param>
         public void MoveRight(bool extendSelection = false)
         {
             BeginSelectionExtension(extendSelection);
@@ -136,6 +320,10 @@ namespace NEdit.Editor
             EndSelectionExtension(extendSelection);
         }
 
+        /// <summary>
+        /// Moves the cursor one line up.
+        /// </summary>
+        /// <param name="extendSelection"><see langword="true" /> to extend the active selection; otherwise, <see langword="false" />.</param>
         public void MoveUp(bool extendSelection = false)
         {
             BeginSelectionExtension(extendSelection);
@@ -147,6 +335,10 @@ namespace NEdit.Editor
             EndSelectionExtension(extendSelection);
         }
 
+        /// <summary>
+        /// Moves the cursor one line down.
+        /// </summary>
+        /// <param name="extendSelection"><see langword="true" /> to extend the active selection; otherwise, <see langword="false" />.</param>
         public void MoveDown(bool extendSelection = false)
         {
             BeginSelectionExtension(extendSelection);
@@ -158,42 +350,63 @@ namespace NEdit.Editor
             EndSelectionExtension(extendSelection);
         }
 
+        /// <summary>
+        /// Moves the cursor up by one editor viewport.
+        /// </summary>
         public void PageUp()
         {
             ClearSelection();
             MoveTo(Math.Max(0, Cursor.Line - Layout.EditorRows), Cursor.Column);
         }
 
+        /// <summary>
+        /// Moves the cursor down by one editor viewport.
+        /// </summary>
         public void PageDown()
         {
             ClearSelection();
             MoveTo(Math.Min(Document.LineCount - 1, Cursor.Line + Layout.EditorRows), Cursor.Column);
         }
 
+        /// <summary>
+        /// Moves the cursor to the start of the current line.
+        /// </summary>
         public void Home()
         {
             ClearSelection();
             MoveTo(Cursor.Line, 0);
         }
 
+        /// <summary>
+        /// Moves the cursor to the end of the current line.
+        /// </summary>
         public void End()
         {
             ClearSelection();
             MoveTo(Cursor.Line, Document.LineAt(Cursor.Line).Length);
         }
 
+        /// <summary>
+        /// Moves the cursor to the start of the document.
+        /// </summary>
         public void FileStart()
         {
             ClearSelection();
             MoveTo(0, 0);
         }
 
+        /// <summary>
+        /// Moves the cursor to the end of the document.
+        /// </summary>
         public void FileEnd()
         {
             ClearSelection();
             MoveTo(Document.LineCount - 1, Document.LineAt(Document.LineCount - 1).Length);
         }
 
+        /// <summary>
+        /// Selects the entire document.
+        /// </summary>
         public void SelectAll()
         {
             EndTypingGroup();
@@ -202,12 +415,18 @@ namespace NEdit.Editor
             SetStatus("Selected all");
         }
 
+        /// <summary>
+        /// Clears the active selection.
+        /// </summary>
         public void ClearSelection()
         {
             EndTypingGroup();
             Selection = null;
         }
 
+        /// <summary>
+        /// Toggles the selection mark at the current cursor position.
+        /// </summary>
         public void ToggleSelection()
         {
             EndTypingGroup();
@@ -215,6 +434,9 @@ namespace NEdit.Editor
             SetStatus(Selection is null ? "Mark removed" : "Mark set");
         }
 
+        /// <summary>
+        /// Toggles line number display for the session.
+        /// </summary>
         public void ToggleLineNumbers()
         {
             EndTypingGroup();
@@ -223,6 +445,10 @@ namespace NEdit.Editor
             SetStatus(Options.LineNumbers ? "Line numbers enabled" : "Line numbers disabled");
         }
 
+        /// <summary>
+        /// Inserts a printable character at the cursor.
+        /// </summary>
+        /// <param name="value">The character to insert.</param>
         public void InsertPrintable(char value)
         {
             if (IsReadOnly)
@@ -242,6 +468,10 @@ namespace NEdit.Editor
             Document.Modified = true;
         }
 
+        /// <summary>
+        /// Inserts text at the cursor.
+        /// </summary>
+        /// <param name="text">The text to insert.</param>
         public void InsertText(string text)
         {
             if (IsReadOnly)
@@ -257,10 +487,19 @@ namespace NEdit.Editor
             });
         }
 
+        /// <summary>
+        /// Inserts a newline at the cursor.
+        /// </summary>
         public void Enter() => InsertText("\n");
 
+        /// <summary>
+        /// Inserts spaces for one configured tab stop at the cursor.
+        /// </summary>
         public void Tab() => InsertText(new string(' ', Options.TabSize));
 
+        /// <summary>
+        /// Deletes the character before the cursor or the active selection.
+        /// </summary>
         public void Backspace()
         {
             if (IsReadOnly)
@@ -292,6 +531,9 @@ namespace NEdit.Editor
             });
         }
 
+        /// <summary>
+        /// Deletes the character after the cursor or the active selection.
+        /// </summary>
         public void Delete()
         {
             if (IsReadOnly)
@@ -314,6 +556,9 @@ namespace NEdit.Editor
             });
         }
 
+        /// <summary>
+        /// Cuts the active selection or current line to the editor clipboard.
+        /// </summary>
         public void Cut()
         {
             if (IsReadOnly)
@@ -350,6 +595,9 @@ namespace NEdit.Editor
             SetStatus("Cut");
         }
 
+        /// <summary>
+        /// Copies the active selection or current line to the editor clipboard.
+        /// </summary>
         public void Copy()
         {
             EndTypingGroup();
@@ -365,12 +613,26 @@ namespace NEdit.Editor
             SetStatus("Copied");
         }
 
+        /// <summary>
+        /// Gets the currently selected text.
+        /// </summary>
+        /// <returns>
+        /// The selected text, or <see langword="null" /> when no text is selected.
+        /// </returns>
         public string? GetSelectedText()
         {
             EndTypingGroup();
             return SelectionRange is { } range ? Document.GetText(range.Start, range.End) : null;
         }
 
+        /// <summary>
+        /// Replaces the active selection with the supplied text.
+        /// </summary>
+        /// <param name="replacement">The replacement text.</param>
+        /// <param name="statusMessage">The status message shown after replacement.</param>
+        /// <returns>
+        /// <see langword="true" /> if the selection was replaced; otherwise, <see langword="false" />.
+        /// </returns>
         public bool ReplaceSelection(string replacement, string statusMessage)
         {
             if (IsReadOnly)
@@ -397,6 +659,9 @@ namespace NEdit.Editor
             return true;
         }
 
+        /// <summary>
+        /// Pastes the editor clipboard at the cursor.
+        /// </summary>
         public void Paste()
         {
             if (string.IsNullOrEmpty(Clipboard))
@@ -408,6 +673,9 @@ namespace NEdit.Editor
             InsertText(Clipboard);
         }
 
+        /// <summary>
+        /// Undoes the most recent undoable edit.
+        /// </summary>
         public void Undo()
         {
             EndTypingGroup();
@@ -424,6 +692,9 @@ namespace NEdit.Editor
             SetStatus("Undid action");
         }
 
+        /// <summary>
+        /// Redoes the most recently undone edit.
+        /// </summary>
         public void Redo()
         {
             EndTypingGroup();
@@ -440,6 +711,14 @@ namespace NEdit.Editor
             SetStatus("Redid action");
         }
 
+        /// <summary>
+        /// Searches for text from the current cursor position.
+        /// </summary>
+        /// <param name="needle">The text to find.</param>
+        /// <param name="backwards"><see langword="true" /> to search toward the start of the document; otherwise, <see langword="false" />.</param>
+        /// <returns>
+        /// <see langword="true" /> if a match was found; otherwise, <see langword="false" />.
+        /// </returns>
         public bool Search(string needle, bool backwards = false)
         {
             EndTypingGroup();
@@ -492,6 +771,14 @@ namespace NEdit.Editor
             return false;
         }
 
+        /// <summary>
+        /// Replaces every matching occurrence in the document.
+        /// </summary>
+        /// <param name="needle">The text to find.</param>
+        /// <param name="replacement">The replacement text.</param>
+        /// <returns>
+        /// The number of replacements made.
+        /// </returns>
         public int ReplaceAll(string needle, string replacement)
         {
             if (IsReadOnly)
@@ -522,6 +809,9 @@ namespace NEdit.Editor
             return count;
         }
 
+        /// <summary>
+        /// Trims leading and trailing whitespace from the current line.
+        /// </summary>
         public void TrimCurrentLine()
         {
             if (IsReadOnly)
@@ -554,21 +844,33 @@ namespace NEdit.Editor
             SetStatus("Trimmed current line");
         }
 
+        /// <summary>
+        /// Trims leading and trailing whitespace from every line.
+        /// </summary>
         public void TrimAllLines()
         {
             TrimAllLines(TrimLineKind.Both, "All lines are already trimmed", count => $"Trimmed {count} line{(count == 1 ? string.Empty : "s")}");
         }
 
+        /// <summary>
+        /// Trims leading whitespace from every line.
+        /// </summary>
         public void TrimAllLinesLeadingSpace()
         {
             TrimAllLines(TrimLineKind.Leading, "No leading whitespace to trim", count => $"Trimmed leading whitespace on {count} line{(count == 1 ? string.Empty : "s")}");
         }
 
+        /// <summary>
+        /// Trims trailing whitespace from every line.
+        /// </summary>
         public void TrimAllLinesTrailingSpace()
         {
             TrimAllLines(TrimLineKind.Trailing, "No trailing whitespace to trim", count => $"Trimmed trailing whitespace on {count} line{(count == 1 ? string.Empty : "s")}");
         }
 
+        /// <summary>
+        /// Removes blank and whitespace-only lines from the document.
+        /// </summary>
         public void RemoveEmptyLines()
         {
             if (IsReadOnly)
@@ -625,6 +927,9 @@ namespace NEdit.Editor
             SetStatus($"Removed {removed} empty line{(removed == 1 ? string.Empty : "s")}");
         }
 
+        /// <summary>
+        /// Converts all tab characters in the document to spaces.
+        /// </summary>
         public void ConvertTabsToSpaces()
         {
             if (IsReadOnly)
@@ -683,6 +988,9 @@ namespace NEdit.Editor
             SetStatus($"Converted {tabCount} tab{(tabCount == 1 ? string.Empty : "s")} on {changedLines} line{(changedLines == 1 ? string.Empty : "s")}");
         }
 
+        /// <summary>
+        /// Inserts a new GUID at the cursor.
+        /// </summary>
         public void InsertGuid()
         {
             if (IsReadOnly)
@@ -704,6 +1012,7 @@ namespace NEdit.Editor
         /// <summary>
         /// Loads a new file into the editor, replacing the current document and resetting all state.
         /// </summary>
+        /// <param name="path">The file path to open.</param>
         public void OpenFile(string path)
         {
             EndTypingGroup();
@@ -720,6 +1029,9 @@ namespace NEdit.Editor
             SetStatusSuccess($"Opened: {Document.DisplayName}");
         }
 
+        /// <summary>
+        /// Inserts the current local date at the cursor.
+        /// </summary>
         public void InsertDate()
         {
             if (IsReadOnly)
@@ -732,6 +1044,9 @@ namespace NEdit.Editor
             SetStatus("Inserted date");
         }
 
+        /// <summary>
+        /// Inserts the current local date and time at the cursor.
+        /// </summary>
         public void InsertDateTime()
         {
             if (IsReadOnly)
@@ -744,11 +1059,21 @@ namespace NEdit.Editor
             SetStatus("Inserted date/time");
         }
 
+        /// <summary>
+        /// Gets a line prepared for display by expanding tab characters.
+        /// </summary>
+        /// <param name="line">The zero-based line index.</param>
+        /// <returns>
+        /// The display text for the requested line.
+        /// </returns>
         public string GetDisplayLine(int line)
         {
             return ExpandTabs(Document.LineAt(line).ToString());
         }
 
+        /// <summary>
+        /// Adjusts the viewport so the cursor is visible.
+        /// </summary>
         public void EnsureCursorVisible()
         {
             int editRows = Math.Max(1, Layout.EditorRows);
@@ -773,6 +1098,13 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Saves the current document.
+        /// </summary>
+        /// <param name="path">The target file path, or <see langword="null" /> to use the document path.</param>
+        /// <returns>
+        /// <see langword="true" /> if the document was saved; otherwise, <see langword="false" />.
+        /// </returns>
         public bool Save(string? path = null)
         {
             EndTypingGroup();
@@ -797,6 +1129,10 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Inserts the contents of a file at the cursor.
+        /// </summary>
+        /// <param name="path">The file path to insert.</param>
         public void InsertFile(string path)
         {
             if (IsReadOnly)
@@ -826,6 +1162,9 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Finalizes the current grouped typing undo record.
+        /// </summary>
         public void EndTypingGroup()
         {
             if (_typingBefore is null)
@@ -1018,8 +1357,19 @@ namespace NEdit.Editor
 
         private enum TrimLineKind
         {
+            /// <summary>
+            /// Trims both leading and trailing whitespace.
+            /// </summary>
             Both,
+
+            /// <summary>
+            /// Trims leading whitespace.
+            /// </summary>
             Leading,
+
+            /// <summary>
+            /// Trims trailing whitespace.
+            /// </summary>
             Trailing
         }
     }

@@ -22,10 +22,12 @@ namespace NEdit
             Path.Combine(SettingsFolder, "nedit.json");
 
         /// <summary>
-        /// Application entry point that runs the editor application.
+        /// Runs the editor application.
         /// </summary>
-        /// <param name="args">Command-line arguments passed to the application.</param>
-        /// <returns>Exit code indicating success or failure of the application.</returns>
+        /// <param name="args">The command-line arguments.</param>
+        /// <returns>
+        /// The process exit code.
+        /// </returns>
         static int Main(string[] args)
         {
             LoadAppSettings();
@@ -40,10 +42,11 @@ namespace NEdit
         }
 
         /// <summary>
-        /// Loads the AppSettings from <c>~/.apexgate/nedit.json</c>.
-        /// Creates the folder and a default settings file if either does not exist.
-        /// Registers the result as a singleton in <see cref="AppServices"/>.
+        /// Loads application settings and registers them with <see cref="AppServices"/>.
         /// </summary>
+        /// <remarks>
+        /// Creates <c>~/.apexgate/nedit.json</c> with defaults when the settings file does not exist.
+        /// </remarks>
         public static void LoadAppSettings()
         {
             Directory.CreateDirectory(SettingsFolder);
@@ -67,9 +70,11 @@ namespace NEdit
         }
 
         /// <summary>
-        /// Saves the current <see cref="AppSettings"/> singleton back to
-        /// <c>~/.apexgate/nedit.json</c>.
+        /// Saves the current <see cref="AppSettings"/> singleton to disk.
         /// </summary>
+        /// <remarks>
+        /// Writes settings to <c>~/.apexgate/nedit.json</c>.
+        /// </remarks>
         public static void SaveAppSettings()
         {
             var settings = AppServices.GetService<AppSettings>();

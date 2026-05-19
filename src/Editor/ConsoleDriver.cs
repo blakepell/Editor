@@ -8,34 +8,144 @@ using System.Text;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Represents the foreground, background, and inverse state used for terminal output.
+    /// </summary>
+    /// <param name="Foreground">The foreground console color.</param>
+    /// <param name="Background">The background console color.</param>
+    /// <param name="Inverse"><see langword="true" /> to render with inverse video; otherwise, <see langword="false" />.</param>
     internal readonly record struct ConsoleStyle(ConsoleColor Foreground, ConsoleColor Background, bool Inverse = false)
     {
+        /// <summary>
+        /// Defines the default editor text style.
+        /// </summary>
         public static readonly ConsoleStyle Normal = new(ConsoleColor.Gray, ConsoleColor.Black);
+
+        /// <summary>
+        /// Defines the title bar style.
+        /// </summary>
         public static readonly ConsoleStyle Title = new(ConsoleColor.White, ConsoleColor.DarkBlue);
+
+        /// <summary>
+        /// Defines the status bar style.
+        /// </summary>
         public static readonly ConsoleStyle Status = new(ConsoleColor.White, ConsoleColor.DarkBlue);
+
+        /// <summary>
+        /// Defines the shortcut key label style.
+        /// </summary>
         public static readonly ConsoleStyle ShortcutKey = new(ConsoleColor.Black, ConsoleColor.Gray);
+
+        /// <summary>
+        /// Defines the shortcut description style.
+        /// </summary>
         public static readonly ConsoleStyle ShortcutText = new(ConsoleColor.Gray, ConsoleColor.Black);
+
+        /// <summary>
+        /// Defines the line number margin style.
+        /// </summary>
         public static readonly ConsoleStyle LineNumber = new(ConsoleColor.DarkGray, ConsoleColor.Black);
+
+        /// <summary>
+        /// Defines the selected text style.
+        /// </summary>
         public static readonly ConsoleStyle Selection = new(ConsoleColor.Black, ConsoleColor.DarkCyan);
     }
 
+    /// <summary>
+    /// Defines terminal I/O operations used by the editor renderer and input loop.
+    /// </summary>
     internal interface IConsoleDriver : IDisposable
     {
+        /// <summary>
+        /// Gets the current terminal size.
+        /// </summary>
+        /// <value>
+        /// The terminal dimensions.
+        /// </value>
         TerminalSize Size { get; }
+
+        /// <summary>
+        /// Reads the next key press from the terminal.
+        /// </summary>
+        /// <returns>
+        /// The key press information.
+        /// </returns>
         ConsoleKeyInfo ReadKey();
+
+        /// <summary>
+        /// Gets a value that indicates whether input is available.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if a key press is waiting; otherwise, <see langword="false" />.
+        /// </value>
         bool KeyAvailable { get; }
+
+        /// <summary>
+        /// Enters the alternate-screen editor mode.
+        /// </summary>
         void EnterEditorMode();
+
+        /// <summary>
+        /// Leaves the alternate-screen editor mode.
+        /// </summary>
         void LeaveEditorMode();
+
+        /// <summary>
+        /// Begins a buffered render frame.
+        /// </summary>
         void BeginFrame();
+
+        /// <summary>
+        /// Ends and flushes a buffered render frame.
+        /// </summary>
         void EndFrame();
+
+        /// <summary>
+        /// Clears the terminal screen.
+        /// </summary>
         void Clear();
+
+        /// <summary>
+        /// Writes styled text at the specified terminal position.
+        /// </summary>
+        /// <param name="row">The zero-based row.</param>
+        /// <param name="column">The zero-based column.</param>
+        /// <param name="text">The text to write.</param>
+        /// <param name="style">The style to apply.</param>
         void WriteAt(int row, int column, string text, ConsoleStyle style);
+
+        /// <summary>
+        /// Writes styled text at the specified terminal position.
+        /// </summary>
+        /// <param name="row">The zero-based row.</param>
+        /// <param name="column">The zero-based column.</param>
+        /// <param name="text">The text to write.</param>
+        /// <param name="style">The style to apply.</param>
         void WriteAt(int row, int column, ReadOnlySpan<char> text, ConsoleStyle style);
+
+        /// <summary>
+        /// Moves the terminal cursor to the specified position.
+        /// </summary>
+        /// <param name="row">The zero-based row.</param>
+        /// <param name="column">The zero-based column.</param>
         void MoveCursor(int row, int column);
+
+        /// <summary>
+        /// Shows or hides the terminal cursor.
+        /// </summary>
+        /// <param name="visible"><see langword="true" /> to show the cursor; otherwise, <see langword="false" />.</param>
         void ShowCursor(bool visible);
+
+        /// <summary>
+        /// Selects a block cursor shape.
+        /// </summary>
         void UseBlockCursor();
     }
 
+    /// <summary>
+    /// Implements <see cref="IConsoleDriver"/> with ANSI escape sequences.
+    /// </summary>
     internal sealed class AnsiConsoleDriver : IConsoleDriver
     {
         private bool _entered;
@@ -44,6 +154,7 @@ namespace NEdit.Editor
         private readonly ConsoleColor _originalBackground = Console.BackgroundColor;
         private readonly bool _originalCursorVisible = SafeGetCursorVisible();
 
+        /// <inheritdoc/>
         public TerminalSize Size
         {
             get
@@ -54,10 +165,13 @@ namespace NEdit.Editor
             }
         }
 
+        /// <inheritdoc/>
         public bool KeyAvailable => Console.KeyAvailable;
 
+        /// <inheritdoc/>
         public ConsoleKeyInfo ReadKey() => Console.ReadKey(intercept: true);
 
+        /// <inheritdoc/>
         public void EnterEditorMode()
         {
             if (_entered)
@@ -71,6 +185,7 @@ namespace NEdit.Editor
             WriteRaw("\x1b[?1049h\x1b[?25l\x1b[2 q\x1b[2J");
         }
 
+        /// <inheritdoc/>
         public void LeaveEditorMode()
         {
             if (!_entered)
@@ -87,6 +202,7 @@ namespace NEdit.Editor
             Console.TreatControlCAsInput = false;
         }
 
+        /// <inheritdoc/>
         public void BeginFrame()
         {
             _frame ??= new StringBuilder(4096);
@@ -94,6 +210,7 @@ namespace NEdit.Editor
             _frame.Append("\x1b[?2026h"); // begin synchronized update — defer rendering until EndFrame
         }
 
+        /// <inheritdoc/>
         public void EndFrame()
         {
             if (_frame is { Length: > 0 })
@@ -105,8 +222,10 @@ namespace NEdit.Editor
             _frame = null;
         }
 
+        /// <inheritdoc/>
         public void Clear() => WriteRaw("\x1b[2J\x1b[H");
 
+        /// <inheritdoc/>
         public void WriteAt(int row, int column, string text, ConsoleStyle style)
         {
             MoveCursor(row, column);
@@ -115,6 +234,7 @@ namespace NEdit.Editor
             WriteRaw(Sgr(ConsoleStyle.Normal));
         }
 
+        /// <inheritdoc/>
         public void WriteAt(int row, int column, ReadOnlySpan<char> text, ConsoleStyle style)
         {
             MoveCursor(row, column);
@@ -123,6 +243,7 @@ namespace NEdit.Editor
             WriteRaw(Sgr(ConsoleStyle.Normal));
         }
 
+        /// <inheritdoc/>
         public void MoveCursor(int row, int column)
         {
             int safeRow = Math.Max(0, row) + 1;
@@ -130,6 +251,7 @@ namespace NEdit.Editor
             WriteRaw($"\x1b[{safeRow};{safeColumn}H");
         }
 
+        /// <inheritdoc/>
         public void ShowCursor(bool visible)
         {
             if (_entered)
@@ -148,8 +270,10 @@ namespace NEdit.Editor
             }
         }
 
+        /// <inheritdoc/>
         public void UseBlockCursor() => WriteRaw("\x1b[2 q");
 
+        /// <inheritdoc/>
         public void Dispose() => LeaveEditorMode();
 
         private static bool SafeGetCursorVisible()

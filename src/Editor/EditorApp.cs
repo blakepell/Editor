@@ -9,8 +9,18 @@ using System.Text;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Coordinates startup, option parsing, and lifetime for the terminal editor.
+    /// </summary>
     internal static class EditorApp
     {
+        /// <summary>
+        /// Runs the editor application.
+        /// </summary>
+        /// <param name="args">The command-line arguments.</param>
+        /// <returns>
+        /// The process exit code.
+        /// </returns>
         public static int Run(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;

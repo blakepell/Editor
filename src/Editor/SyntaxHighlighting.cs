@@ -9,36 +9,121 @@ using System.Text.RegularExpressions;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Represents a styled range within a single line.
+    /// </summary>
+    /// <param name="Start">The zero-based start column.</param>
+    /// <param name="Length">The number of highlighted characters.</param>
+    /// <param name="Style">The style applied to the range.</param>
     internal readonly record struct HighlightSpan(int Start, int Length, ConsoleStyle Style);
 
+    /// <summary>
+    /// Describes a syntax highlighting rule parsed from a nanorc file.
+    /// </summary>
     internal sealed class SyntaxRule
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyntaxRule"/> class.
+        /// </summary>
+        /// <param name="style">The style applied to matching text.</param>
+        /// <param name="caseInsensitive"><see langword="true" /> to compile patterns case-insensitively; otherwise, <see langword="false" />.</param>
         public SyntaxRule(ConsoleStyle style, bool caseInsensitive)
         {
             Style = style;
             CaseInsensitive = caseInsensitive;
         }
 
+        /// <summary>
+        /// Gets the style applied to matching text.
+        /// </summary>
+        /// <value>
+        /// The highlight style.
+        /// </value>
         public ConsoleStyle Style { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the rule uses case-insensitive matching.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if matching ignores case; otherwise, <see langword="false" />.
+        /// </value>
         public bool CaseInsensitive { get; }
+
+        /// <summary>
+        /// Gets the single-line regex patterns for the rule.
+        /// </summary>
+        /// <value>
+        /// The compiled regex patterns.
+        /// </value>
         public List<Regex> Patterns { get; } = [];
+
+        /// <summary>
+        /// Gets or sets the multiline start pattern.
+        /// </summary>
+        /// <value>
+        /// The compiled start pattern, or <see langword="null" /> when the rule is single-line.
+        /// </value>
         public Regex? Start { get; set; }
+
+        /// <summary>
+        /// Gets or sets the multiline end pattern.
+        /// </summary>
+        /// <value>
+        /// The compiled end pattern, or <see langword="null" /> when the rule is single-line.
+        /// </value>
         public Regex? End { get; set; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the rule spans multiple lines.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if both start and end patterns are set; otherwise, <see langword="false" />.
+        /// </value>
         public bool IsMultiline => Start is not null && End is not null;
     }
 
+    /// <summary>
+    /// Describes a complete syntax definition parsed from a nanorc file.
+    /// </summary>
     internal sealed class SyntaxDefinition
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyntaxDefinition"/> class.
+        /// </summary>
+        /// <param name="name">The syntax definition name.</param>
         public SyntaxDefinition(string name)
         {
             Name = name;
         }
 
+        /// <summary>
+        /// Gets the syntax definition name.
+        /// </summary>
+        /// <value>
+        /// The name declared by the nanorc <c>syntax</c> line.
+        /// </value>
         public string Name { get; }
+
+        /// <summary>
+        /// Gets the file name patterns matched by this syntax.
+        /// </summary>
+        /// <value>
+        /// The compiled file matching patterns.
+        /// </value>
         public List<Regex> FileMatches { get; } = [];
+
+        /// <summary>
+        /// Gets the highlighting rules for this syntax.
+        /// </summary>
+        /// <value>
+        /// The parsed syntax rules.
+        /// </value>
         public List<SyntaxRule> Rules { get; } = [];
     }
 
+    /// <summary>
+    /// Loads and resolves syntax definitions embedded in the editor assembly.
+    /// </summary>
     internal sealed class SyntaxLibrary
     {
         private readonly List<SyntaxDefinition> _syntaxes;
@@ -50,6 +135,12 @@ namespace NEdit.Editor
             _defaultSyntax = syntaxes.FirstOrDefault(s => s.Name.Equals("default", StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// Loads syntax definitions from embedded nanorc resources.
+        /// </summary>
+        /// <returns>
+        /// A syntax library containing all successfully parsed embedded definitions.
+        /// </returns>
         public static SyntaxLibrary LoadEmbedded()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
@@ -77,6 +168,13 @@ namespace NEdit.Editor
             return new SyntaxLibrary(syntaxes);
         }
 
+        /// <summary>
+        /// Finds the syntax definition that matches a file path.
+        /// </summary>
+        /// <param name="path">The file path to match, or <see langword="null" /> to use the default syntax.</param>
+        /// <returns>
+        /// The matching syntax definition, the default syntax definition, or <see langword="null" /> when none is available.
+        /// </returns>
         public SyntaxDefinition? FindForFile(string? path)
         {
             if (!string.IsNullOrWhiteSpace(path))
@@ -100,21 +198,45 @@ namespace NEdit.Editor
         }
     }
 
+    /// <summary>
+    /// Produces styled highlight spans for document lines.
+    /// </summary>
     internal sealed class SyntaxHighlighter
     {
         private readonly SyntaxDefinition? _syntax;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyntaxHighlighter"/> class.
+        /// </summary>
+        /// <param name="syntax">The syntax definition to apply.</param>
         public SyntaxHighlighter(SyntaxDefinition? syntax)
         {
             _syntax = syntax;
         }
 
+        /// <summary>
+        /// Highlights a single document line.
+        /// </summary>
+        /// <param name="document">The document to highlight.</param>
+        /// <param name="lineIndex">The zero-based line index.</param>
+        /// <returns>
+        /// The highlight spans for the requested line.
+        /// </returns>
         public IReadOnlyList<HighlightSpan> Highlight(DocumentBuffer document, int lineIndex)
         {
             Dictionary<int, List<HighlightSpan>> range = HighlightRange(document, lineIndex, 1);
             return range.TryGetValue(lineIndex, out List<HighlightSpan>? spans) ? spans : [];
         }
 
+        /// <summary>
+        /// Highlights a range of document lines.
+        /// </summary>
+        /// <param name="document">The document to highlight.</param>
+        /// <param name="firstLine">The first zero-based line index.</param>
+        /// <param name="lineCount">The number of lines to highlight.</param>
+        /// <returns>
+        /// A map of line indexes to highlight spans.
+        /// </returns>
         public Dictionary<int, List<HighlightSpan>> HighlightRange(DocumentBuffer document, int firstLine, int lineCount)
         {
             var spansByLine = new Dictionary<int, List<HighlightSpan>>();
@@ -269,10 +391,20 @@ namespace NEdit.Editor
         }
     }
 
+    /// <summary>
+    /// Parses nano syntax highlighting definitions into editor syntax definitions.
+    /// </summary>
     internal static class NanorcParser
     {
         private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(25);
 
+        /// <summary>
+        /// Parses nanorc syntax text.
+        /// </summary>
+        /// <param name="text">The nanorc file content.</param>
+        /// <returns>
+        /// The parsed syntax definition, or <see langword="null" /> when no syntax declaration is present.
+        /// </returns>
         public static SyntaxDefinition? Parse(string text)
         {
             SyntaxDefinition? definition = null;

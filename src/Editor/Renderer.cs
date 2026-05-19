@@ -8,17 +8,28 @@ using NEdit.Commands;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Renders the editor interface to an <see cref="IConsoleDriver"/>.
+    /// </summary>
     internal sealed class Renderer
     {
         private static readonly string Spaces = new(' ', 256);
         private readonly IConsoleDriver _console;
         private TerminalSize _lastSize;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Renderer"/> class.
+        /// </summary>
+        /// <param name="console">The console driver used for terminal output.</param>
         public Renderer(IConsoleDriver console)
         {
             _console = console;
         }
 
+        /// <summary>
+        /// Renders the normal editor view.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
         public void Render(EditorSession session)
         {
             _console.BeginFrame();
@@ -43,6 +54,15 @@ namespace NEdit.Editor
             _console.EndFrame();
         }
 
+        /// <summary>
+        /// Renders the editor with the command palette overlay.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
+        /// <param name="query">The command search query.</param>
+        /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
+        /// <param name="commands">The commands currently visible in the palette.</param>
+        /// <param name="selectedIndex">The selected command index.</param>
+        /// <param name="context">The command context used to determine availability.</param>
         public void RenderCommandPalette(
             EditorSession session,
             string query,
@@ -76,6 +96,15 @@ namespace NEdit.Editor
             _console.EndFrame();
         }
 
+        /// <summary>
+        /// Renders the editor with the file browser overlay.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
+        /// <param name="query">The file filter query.</param>
+        /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
+        /// <param name="entries">The file entries currently visible in the browser.</param>
+        /// <param name="selectedIndex">The selected file entry index.</param>
+        /// <param name="currentDir">The directory currently being browsed.</param>
         public void RenderFileBrowser(
             EditorSession session,
             string query,
@@ -512,10 +541,32 @@ namespace NEdit.Editor
         }
     }
 
+    /// <summary>
+    /// Describes the row and column layout used by the editor renderer.
+    /// </summary>
+    /// <param name="Rows">The total number of terminal rows.</param>
+    /// <param name="Columns">The total number of terminal columns.</param>
+    /// <param name="EditorTop">The first editor body row.</param>
+    /// <param name="EditorRows">The number of editor body rows.</param>
+    /// <param name="StatusRow">The status bar row.</param>
+    /// <param name="ShortcutTop">The first shortcut row.</param>
     internal readonly record struct EditorLayout(int Rows, int Columns, int EditorTop, int EditorRows, int StatusRow, int ShortcutTop)
     {
+        /// <summary>
+        /// Gets the number of editable text columns.
+        /// </summary>
+        /// <value>
+        /// The editor body column count.
+        /// </value>
         public int EditColumns => Columns;
 
+        /// <summary>
+        /// Creates a renderer layout from the terminal size.
+        /// </summary>
+        /// <param name="size">The current terminal size.</param>
+        /// <returns>
+        /// The computed editor layout.
+        /// </returns>
         public static EditorLayout From(TerminalSize size)
         {
             int rows = Math.Max(5, size.Rows);

@@ -22,8 +22,20 @@ namespace NEdit.Commands
             _commands = commands;
         }
 
+        /// <summary>
+        /// Gets the commands available to the command palette.
+        /// </summary>
+        /// <value>
+        /// The registered editor commands.
+        /// </value>
         public IReadOnlyList<EditorCommand> Commands => _commands;
 
+        /// <summary>
+        /// Creates the default command catalog for the editor.
+        /// </summary>
+        /// <returns>
+        /// A catalog populated with built-in editor commands.
+        /// </returns>
         public static EditorCommandCatalog CreateDefault()
         {
             return new EditorCommandCatalog(
@@ -150,6 +162,13 @@ namespace NEdit.Commands
             ]);
         }
 
+        /// <summary>
+        /// Filters commands by name, description, or alias.
+        /// </summary>
+        /// <param name="query">The user-entered search query.</param>
+        /// <returns>
+        /// The commands that match <paramref name="query" />.
+        /// </returns>
         public IReadOnlyList<EditorCommand> Filter(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -168,9 +187,13 @@ namespace NEdit.Commands
         }
 
         /// <summary>
-        /// If <paramref name="query"/> begins with the command's alias keyword, returns the
-        /// remainder of the query as the argument; otherwise returns <see langword="null"/>.
+        /// Parses an inline alias argument from a command palette query.
         /// </summary>
+        /// <param name="command">The command whose alias should be matched.</param>
+        /// <param name="query">The command palette query.</param>
+        /// <returns>
+        /// The argument after the command alias, or <see langword="null" /> when the query does not start with the alias.
+        /// </returns>
         public string? ParseAliasArgument(EditorCommand command, string query)
         {
             if (command.Alias is null)

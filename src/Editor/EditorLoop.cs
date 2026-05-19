@@ -10,9 +10,14 @@ using System.Diagnostics;
 
 namespace NEdit.Editor
 {
+    /// <summary>
+    /// Processes terminal input and dispatches commands to an <see cref="EditorSession"/>.
+    /// </summary>
     internal sealed class EditorLoop
     {
-        /// <summary>Maps file extensions to the shell command template and whether to run in the file's directory.</summary>
+        /// <summary>
+        /// Maps file extensions to the shell command template and working directory behavior.
+        /// </summary>
         private static readonly Dictionary<string, (string Command, bool UseFileDirectory)> FileRunners = new(StringComparer.OrdinalIgnoreCase)
         {
             [".ps1"] = ("pwsh.exe \"{file}\"", false),
@@ -24,6 +29,11 @@ namespace NEdit.Editor
         private readonly EditorCommandCatalog _commandCatalog;
         private readonly EditorCommandContext _commandContext;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EditorLoop"/> class.
+        /// </summary>
+        /// <param name="session">The editor session to mutate.</param>
+        /// <param name="renderer">The renderer used to update the terminal.</param>
         public EditorLoop(EditorSession session, Renderer renderer)
         {
             _session = session;
@@ -33,6 +43,9 @@ namespace NEdit.Editor
             _commandContext = new EditorCommandContext(_session);
         }
 
+        /// <summary>
+        /// Runs the editor input loop until the session exits.
+        /// </summary>
         public void Run()
         {
             _renderer.Render(_session);
@@ -799,8 +812,19 @@ namespace NEdit.Editor
 
         private enum YesNoCancel
         {
+            /// <summary>
+            /// Indicates an affirmative answer.
+            /// </summary>
             Yes,
+
+            /// <summary>
+            /// Indicates a negative answer.
+            /// </summary>
             No,
+
+            /// <summary>
+            /// Indicates that the prompt was cancelled.
+            /// </summary>
             Cancel
         }
     }
