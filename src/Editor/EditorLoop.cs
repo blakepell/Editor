@@ -160,6 +160,10 @@ namespace NEdit.Editor
             {
                 Exit();
             }
+            else if (IsCtrl(key, 'N'))
+            {
+                NewDocument();
+            }
             else if (IsCtrl(key, 'O'))
             {
                 OpenFile();
@@ -234,22 +238,40 @@ namespace NEdit.Editor
         private void Exit()
         {
             _session.EndTypingGroup();
-            if (_session.Document.Modified)
+            if (!ConfirmSaveModifiedBuffer())
             {
-                YesNoCancel answer = PromptYesNoCancel("Save modified buffer?");
-                if (answer is YesNoCancel.Cancel)
-                {
-                    _session.SetStatus("Cancelled");
-                    return;
-                }
-
-                if (answer is YesNoCancel.Yes && !Save())
-                {
-                    return;
-                }
+                return;
             }
 
             _session.Running = false;
+        }
+
+        private void NewDocument()
+        {
+            _session.EndTypingGroup();
+            if (!ConfirmSaveModifiedBuffer())
+            {
+                return;
+            }
+
+            _session.NewDocument();
+        }
+
+        private bool ConfirmSaveModifiedBuffer()
+        {
+            if (!_session.Document.Modified)
+            {
+                return true;
+            }
+
+            YesNoCancel answer = PromptYesNoCancel("Save modified buffer?");
+            if (answer is YesNoCancel.Cancel)
+            {
+                _session.SetStatus("Cancelled");
+                return false;
+            }
+
+            return answer is not YesNoCancel.Yes || Save();
         }
 
         private bool Save()
@@ -439,6 +461,12 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseNewDocument)
+            {
+                NewDocument();
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 
@@ -502,19 +530,9 @@ namespace NEdit.Editor
                     else
                     {
                         string path = Path.GetFullPath(Path.Combine(browserDir, selected.Name));
-                        if (_session.Document.Modified)
+                        if (!ConfirmSaveModifiedBuffer())
                         {
-                            YesNoCancel answer = PromptYesNoCancel("Save modified buffer?");
-                            if (answer is YesNoCancel.Cancel)
-                            {
-                                _session.SetStatus("Cancelled");
-                                return;
-                            }
-
-                            if (answer is YesNoCancel.Yes && !Save())
-                            {
-                                return;
-                            }
+                            return;
                         }
 
                         _session.OpenFile(path);

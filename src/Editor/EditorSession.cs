@@ -1030,6 +1030,25 @@ namespace NEdit.Editor
         }
 
         /// <summary>
+        /// Starts a new untitled document and resets document-specific editor state.
+        /// </summary>
+        public void NewDocument()
+        {
+            EndTypingGroup();
+            Document = DocumentBuffer.Load(null, Options);
+            Cursor = new Position(0, 0);
+            DesiredColumn = 0;
+            ViewTop = 0;
+            ViewLeft = 0;
+            Selection = null;
+            SuggestedSavePath = null;
+            _undoStack.Clear();
+            _typingBefore = null;
+            RefreshSyntax();
+            SetStatusSuccess("New document");
+        }
+
+        /// <summary>
         /// Inserts the current local date at the cursor.
         /// </summary>
         public void InsertDate()

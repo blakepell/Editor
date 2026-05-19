@@ -23,7 +23,8 @@ namespace NEdit.Commands
         /// <param name="alias">The optional text alias accepted by the command palette.</param>
         /// <param name="argumentPrompt">The optional prompt label used when an argument is required.</param>
         /// <param name="useFilePicker"><see langword="true" /> to open the file picker before command execution; otherwise, <see langword="false" />.</param>
-        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false)
+        /// <param name="useNewDocument"><see langword="true" /> to start a new document before command execution; otherwise, <see langword="false" />.</param>
+        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false)
         {
             Name = name;
             Description = description;
@@ -32,6 +33,7 @@ namespace NEdit.Commands
             Alias = alias;
             ArgumentPrompt = argumentPrompt;
             UseFilePicker = useFilePicker;
+            UseNewDocument = useNewDocument;
         }
 
         /// <summary>
@@ -89,6 +91,14 @@ namespace NEdit.Commands
         /// <see langword="true" /> if the file picker should be shown; otherwise, <see langword="false" />.
         /// </value>
         public bool UseFilePicker { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command starts a new document.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if a new document should be started; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseNewDocument { get; }
 
         /// <summary>
         /// Determines whether the command can execute in the supplied context.

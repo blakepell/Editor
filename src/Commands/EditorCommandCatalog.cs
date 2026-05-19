@@ -118,9 +118,17 @@ namespace NEdit.Commands
                         context => context?.Session.InsertDateTime(),
                         context => context?.Session.IsReadOnly == false)),
                 new EditorCommand(
+                    "New Document",
+                    "Start a new untitled document.",
+                    "Ctrl+N",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useNewDocument: true),
+                new EditorCommand(
                     "Open File",
                     "Browse and open a file from the current directory.",
-                    null,
+                    "Ctrl+O",
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null),
