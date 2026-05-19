@@ -126,46 +126,154 @@ namespace NEdit.Editor
     /// </summary>
     internal sealed class SyntaxLibrary
     {
-        private readonly List<SyntaxDefinition> _syntaxes;
-        private readonly SyntaxDefinition? _defaultSyntax;
-
-        private SyntaxLibrary(List<SyntaxDefinition> syntaxes)
+        private const string ResourcePrefix = "Nano.LocalSyntax.";
+        private const string ResourceSuffix = ".nanorc";
+        private static readonly Dictionary<string, string[]> CandidateAliases = new(StringComparer.OrdinalIgnoreCase)
         {
-            _syntaxes = syntaxes;
-            _defaultSyntax = syntaxes.FirstOrDefault(s => s.Name.Equals("default", StringComparison.OrdinalIgnoreCase));
+            ["adoc"] = ["asciidoc"],
+            ["asc"] = ["asciidoc"],
+            ["ac"] = ["autoconf"],
+            ["asm"] = ["asm"],
+            ["bash_aliases"] = ["sh"],
+            ["bash_functions"] = ["sh"],
+            ["bash_login"] = ["sh"],
+            ["bash_logout"] = ["sh"],
+            ["bash_profile"] = ["sh"],
+            ["bashrc"] = ["sh"],
+            ["bat"] = ["batch"],
+            ["capfile"] = ["ruby"],
+            ["cc"] = ["c"],
+            ["cfg"] = ["ini", "conf"],
+            ["changelog"] = ["changelog"],
+            ["colorTest"] = ["colortest"],
+            ["clj"] = ["clojure"],
+            ["cljc"] = ["clojure"],
+            ["cljs"] = ["clojure"],
+            ["cmd"] = ["batch"],
+            ["cmakelists.txt"] = ["cmake"],
+            ["commit_editmsg"] = ["git"],
+            ["config.ru"] = ["ruby"],
+            ["coffee"] = ["coffeescript"],
+            ["cpp"] = ["c"],
+            ["cs"] = ["csharp"],
+            ["cxx"] = ["c"],
+            ["dockerfile"] = ["Dockerfile"],
+            ["edn"] = ["clojure"],
+            ["el"] = ["elisp"],
+            ["eml"] = ["email"],
+            ["env"] = ["dotenv"],
+            ["erb"] = ["erb"],
+            ["ex"] = ["elixir"],
+            ["exs"] = ["elixir"],
+            ["f"] = ["fortran"],
+            ["f90"] = ["fortran"],
+            ["f95"] = ["fortran"],
+            ["for"] = ["fortran"],
+            ["fs"] = ["fsharp"],
+            ["fsproj"] = ["csproj"],
+            ["fsx"] = ["fsharp"],
+            ["gemini"] = ["gemini"],
+            ["gemfile"] = ["ruby"],
+            ["git-rebase-todo"] = ["git"],
+            ["gitconfig"] = ["git"],
+            ["gitmodules"] = ["git"],
+            ["gmi"] = ["gemini"],
+            ["gradle"] = ["gradle"],
+            ["groovy"] = ["gradle"],
+            ["gs"] = ["genie"],
+            ["gv"] = ["dot"],
+            ["h"] = ["c"],
+            ["hh"] = ["c"],
+            ["hcl"] = ["hcl"],
+            ["hpp"] = ["c"],
+            ["hs"] = ["haskell"],
+            ["htm"] = ["html"],
+            ["html"] = ["html"],
+            ["hxx"] = ["c"],
+            ["i"] = ["c"],
+            ["ii"] = ["c"],
+            ["ino"] = ["c", "arduino"],
+            ["j2"] = ["html.j2", "html"],
+            ["jade"] = ["jade"],
+            ["java"] = ["java"],
+            ["js"] = ["js", "javascript"],
+            ["json"] = ["json"],
+            ["kt"] = ["kotlin"],
+            ["kts"] = ["kotlin"],
+            ["less"] = ["css"],
+            ["lua"] = ["lua"],
+            ["makefile"] = ["makefile"],
+            ["md"] = ["markdown"],
+            ["mkd"] = ["markdown"],
+            ["mkdn"] = ["markdown"],
+            ["moon"] = ["moonscript"],
+            ["m"] = ["objc", "octave"],
+            ["patch"] = ["patch"],
+            ["php"] = ["php"],
+            ["pkgbuild"] = ["pkgbuild"],
+            ["profile"] = ["sh"],
+            ["ps1"] = ["powershell"],
+            ["psm1"] = ["powershell"],
+            ["props"] = ["csproj"],
+            ["pxd"] = ["cython"],
+            ["py"] = ["python"],
+            ["pyx"] = ["cython"],
+            ["pyi"] = ["cython", "python"],
+            ["rakefile"] = ["ruby"],
+            ["rb"] = ["ruby"],
+            ["rego"] = ["rego"],
+            ["rs"] = ["rust"],
+            ["rst"] = ["reST"],
+            ["scss"] = ["css"],
+            ["service"] = ["systemd"],
+            ["sh"] = ["sh"],
+            ["sls"] = ["sls"],
+            ["socket"] = ["systemd"],
+            ["swift"] = ["swift"],
+            ["tag_editmsg"] = ["git"],
+            ["targets"] = ["csproj"],
+            ["tf"] = ["hcl"],
+            ["timer"] = ["systemd"],
+            ["toml"] = ["toml"],
+            ["ts"] = ["ts", "javascript"],
+            ["tsx"] = ["ts", "javascript"],
+            ["twig"] = ["html"],
+            ["vagrantfile"] = ["ruby"],
+            ["vbproj"] = ["csproj"],
+            ["xml"] = ["xml"],
+            ["xdefaults"] = ["xresources"],
+            ["xresources"] = ["xresources"],
+            ["yaml"] = ["yaml"],
+            ["yml"] = ["yaml"],
+            ["zig"] = ["zig"],
+            ["zsh"] = ["zsh"]
+        };
+
+        private readonly Assembly _assembly;
+        private readonly Dictionary<string, string> _resourcesByKey;
+        private readonly Dictionary<string, SyntaxDefinition?> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+        private SyntaxLibrary(Assembly assembly, IEnumerable<string> resourceNames)
+        {
+            _assembly = assembly;
+            _resourcesByKey = resourceNames
+                .Where(name => name.EndsWith(ResourceSuffix, StringComparison.OrdinalIgnoreCase))
+                .Select(name => new { Key = GetResourceKey(name), Name = name })
+                .Where(resource => resource.Key.Length > 0)
+                .GroupBy(resource => resource.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().Name, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// Loads syntax definitions from embedded nanorc resources.
+        /// Creates a lazy syntax library from embedded nanorc resources.
         /// </summary>
         /// <returns>
-        /// A syntax library containing all successfully parsed embedded definitions.
+        /// A syntax library that parses embedded definitions on demand.
         /// </returns>
         public static SyntaxLibrary LoadEmbedded()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
-            var syntaxes = new List<SyntaxDefinition>();
-
-            foreach (string resourceName in assembly.GetManifestResourceNames()
-                         .Where(name => name.EndsWith(".nanorc", StringComparison.OrdinalIgnoreCase))
-                         .OrderBy(name => name.Contains(".LocalSyntax.", StringComparison.Ordinal) ? 0 : 1)
-                         .ThenBy(name => name, StringComparer.OrdinalIgnoreCase))
-            {
-                using Stream? stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream is null)
-                {
-                    continue;
-                }
-
-                using var reader = new StreamReader(stream);
-                SyntaxDefinition? syntax = NanorcParser.Parse(reader.ReadToEnd());
-                if (syntax is not null)
-                {
-                    syntaxes.Add(syntax);
-                }
-            }
-
-            return new SyntaxLibrary(syntaxes);
+            return new SyntaxLibrary(assembly, assembly.GetManifestResourceNames());
         }
 
         /// <summary>
@@ -180,9 +288,10 @@ namespace NEdit.Editor
             if (!string.IsNullOrWhiteSpace(path))
             {
                 string fileName = Path.GetFileName(path);
-                foreach (SyntaxDefinition syntax in _syntaxes)
+                foreach (string key in CandidateKeys(fileName))
                 {
-                    if (syntax.FileMatches.Count == 0)
+                    SyntaxDefinition? syntax = LoadSyntax(key);
+                    if (syntax is null || syntax.FileMatches.Count == 0)
                     {
                         continue;
                     }
@@ -194,7 +303,113 @@ namespace NEdit.Editor
                 }
             }
 
-            return _defaultSyntax;
+            return LoadSyntax("default");
+        }
+
+        private SyntaxDefinition? LoadSyntax(string key)
+        {
+            if (_cache.TryGetValue(key, out SyntaxDefinition? cached))
+            {
+                return cached;
+            }
+
+            if (!_resourcesByKey.TryGetValue(key, out string? resourceName))
+            {
+                _cache[key] = null;
+                return null;
+            }
+
+            using Stream? stream = _assembly.GetManifestResourceStream(resourceName);
+            if (stream is null)
+            {
+                _cache[key] = null;
+                return null;
+            }
+
+            using var reader = new StreamReader(stream);
+            SyntaxDefinition? syntax = NanorcParser.Parse(reader.ReadToEnd());
+            _cache[key] = syntax;
+            return syntax;
+        }
+
+        private static IEnumerable<string> CandidateKeys(string fileName)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string candidate in RawCandidateKeys(fileName))
+            {
+                if (seen.Add(candidate))
+                {
+                    yield return candidate;
+                }
+            }
+        }
+
+        private static IEnumerable<string> RawCandidateKeys(string fileName)
+        {
+            string trimmed = fileName.Trim();
+            if (trimmed.Length == 0)
+            {
+                yield break;
+            }
+
+            foreach (string alias in AliasesFor(trimmed))
+            {
+                yield return alias;
+            }
+
+            yield return trimmed;
+            yield return trimmed.TrimStart('.');
+
+            string extension = Path.GetExtension(trimmed).TrimStart('.');
+            if (extension.Length > 0)
+            {
+                foreach (string alias in AliasesFor(extension))
+                {
+                    yield return alias;
+                }
+
+                yield return extension;
+            }
+
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(trimmed).TrimStart('.');
+            if (nameWithoutExtension.Length > 0)
+            {
+                foreach (string alias in AliasesFor(nameWithoutExtension))
+                {
+                    yield return alias;
+                }
+
+                yield return nameWithoutExtension;
+            }
+        }
+
+        private static IEnumerable<string> AliasesFor(string key)
+        {
+            if (CandidateAliases.TryGetValue(key, out string[]? aliases))
+            {
+                foreach (string alias in aliases)
+                {
+                    yield return alias;
+                }
+            }
+        }
+
+        private static string GetResourceKey(string resourceName)
+        {
+            string key = resourceName;
+            int prefixIndex = key.IndexOf(ResourcePrefix, StringComparison.Ordinal);
+            if (prefixIndex >= 0)
+            {
+                key = key[(prefixIndex + ResourcePrefix.Length)..];
+            }
+
+            if (key.EndsWith(ResourceSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                key = key[..^ResourceSuffix.Length];
+            }
+
+            return key;
         }
     }
 
