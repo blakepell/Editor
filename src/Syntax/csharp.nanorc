@@ -6,7 +6,6 @@ color brightcyan  "class +[A-Za-z0-9]+ *((:) +[A-Za-z0-9.]+)?"
 # Annotation
 color magenta   "@[A-Za-z]+"
 
-color cyan "(?:<|,\s*)([A-Za-z_][A-Za-z0-9_]*)(?=\s*(?:,|>))"
 color brightblue "[A-Za-z_][A-Za-z0-9_]*[[:space:]]*(?=\()"
 color cyan     "\<(bool|byte|sbyte|char|decimal|double|float|IntPtr|int|uint|long|ulong|object|short|ushort|string|base|this|var|void)\>"
 color cyan  "\<(alias|as|case|catch|checked|default|do|dynamic|else|finally|fixed|for|foreach|goto|if|is|lock|new|null|return|switch|throw|try|unchecked|while)\>"
