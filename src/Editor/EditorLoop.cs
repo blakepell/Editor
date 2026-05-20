@@ -192,7 +192,7 @@ namespace NEdit.Editor
             {
                 _session.Cut();
             }
-            else if (IsCtrl(key, 'U'))
+            else if (IsCtrl(key, 'P'))
             {
                 _session.Paste();
             }
@@ -202,24 +202,19 @@ namespace NEdit.Editor
             }
             else if (IsCtrl(key, 'C'))
             {
-                var cursor = _session.Cursor;
-                _session.SetStatus($"Line {cursor.Line + 1}/{_session.Document.LineCount}, Col {cursor.Column + 1}");
+                _session.Copy();
             }
             else if (key.KeyChar == 31)
             {
                 GoToLine();
             }
-            else if (IsAlt(key, '6'))
-            {
-                _session.Copy();
-            }
-            else if (IsAlt(key, 'U'))
-            {
-                _session.Undo();
-            }
-            else if (IsAlt(key, 'E'))
+            else if (IsCtrlAlt(key, 'Z'))
             {
                 _session.Redo();
+            }
+            else if (IsCtrl(key, 'Z'))
+            {
+                _session.Undo();
             }
             else if (IsAlt(key, '\\'))
             {
