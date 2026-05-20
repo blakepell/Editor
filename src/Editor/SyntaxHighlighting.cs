@@ -15,7 +15,12 @@ namespace NEdit.Editor
     /// <param name="Start">The zero-based start column.</param>
     /// <param name="Length">The number of highlighted characters.</param>
     /// <param name="Style">The style applied to the range.</param>
-    internal readonly record struct HighlightSpan(int Start, int Length, ConsoleStyle Style);
+    /// <summary>
+    /// The zero-based declaration index of the rule that produced this span.
+    /// Spans with a higher priority are painted last and win over overlapping lower-priority spans,
+    /// matching GNU nano's "last matching rule wins" semantics.
+    /// </summary>
+    internal readonly record struct HighlightSpan(int Start, int Length, ConsoleStyle Style, int Priority);
 
     /// <summary>
     /// Describes a syntax highlighting rule parsed from a nanorc file.
@@ -477,15 +482,17 @@ namespace NEdit.Editor
                 {
                     if (cached.Spans.Count > 0)
                     {
-                        spansByLine[lineIndex] = cached.Spans;
+                        // Copy the cached list so multiline spans added below do not mutate the cache.
+                        spansByLine[lineIndex] = new List<HighlightSpan>(cached.Spans);
                     }
                     continue;
                 }
 
                 List<HighlightSpan> spans = GetList(spansByLine, lineIndex);
 
-                foreach (SyntaxRule rule in _syntax.Rules)
+                for (int ruleIndex = 0; ruleIndex < _syntax.Rules.Count; ruleIndex++)
                 {
+                    SyntaxRule rule = _syntax.Rules[ruleIndex];
                     if (rule.IsMultiline)
                     {
                         continue;
@@ -493,25 +500,36 @@ namespace NEdit.Editor
 
                     foreach (Regex pattern in rule.Patterns)
                     {
-                        AddMatches(text, pattern, rule.Style, spans);
+                        AddMatches(text, pattern, rule.Style, ruleIndex, spans);
                     }
                 }
 
                 _singleLineCache[lineIndex] = (text, spans);
             }
 
-            foreach (SyntaxRule rule in _syntax.Rules)
+            for (int ruleIndex = 0; ruleIndex < _syntax.Rules.Count; ruleIndex++)
             {
+                SyntaxRule rule = _syntax.Rules[ruleIndex];
                 if (rule.IsMultiline)
                 {
-                    AddMultilineSpans(document, startLine, endLine, rule, spansByLine);
+                    AddMultilineSpans(document, startLine, endLine, rule, ruleIndex, spansByLine);
                 }
+            }
+
+            // Sort each line's spans by rule declaration order so later-declared rules paint last
+            // and win over earlier ones — matching GNU nano's "last matching rule wins" semantics.
+            foreach (List<HighlightSpan> lineSpans in spansByLine.Values)
+            {
+                lineSpans.Sort(static (a, b) =>
+                    a.Priority != b.Priority
+                        ? a.Priority.CompareTo(b.Priority)
+                        : a.Start.CompareTo(b.Start));
             }
 
             return spansByLine;
         }
 
-        private static void AddMatches(string text, Regex pattern, ConsoleStyle style, List<HighlightSpan> spans)
+        private static void AddMatches(string text, Regex pattern, ConsoleStyle style, int priority, List<HighlightSpan> spans)
         {
             try
             {
@@ -519,7 +537,7 @@ namespace NEdit.Editor
                 {
                     if (match.Success && match.Length > 0)
                     {
-                        spans.Add(new HighlightSpan(match.Index, match.Length, style));
+                        spans.Add(new HighlightSpan(match.Index, match.Length, style, priority));
                     }
                 }
             }
@@ -534,6 +552,7 @@ namespace NEdit.Editor
             int startLine,
             int endLine,
             SyntaxRule rule,
+            int priority,
             Dictionary<int, List<HighlightSpan>> spansByLine)
         {
             if (rule.Start is null || rule.End is null)
@@ -566,7 +585,7 @@ namespace NEdit.Editor
                             Match endSameLine = MatchFrom(rule.End, text, index);
                             int end = endSameLine.Success ? endSameLine.Index + endSameLine.Length : text.Length;
                             List<HighlightSpan> spans = GetList(spansByLine, lineIndex);
-                            spans.Add(new HighlightSpan(start.Index, Math.Max(0, end - start.Index), rule.Style));
+                            spans.Add(new HighlightSpan(start.Index, Math.Max(0, end - start.Index), rule.Style, priority));
                             if (endSameLine.Success)
                             {
                                 inside = false;
@@ -582,7 +601,7 @@ namespace NEdit.Editor
                         {
                             int spanEnd = end.Success ? end.Index + end.Length : text.Length;
                             List<HighlightSpan> spans = GetList(spansByLine, lineIndex);
-                            spans.Add(new HighlightSpan(0, spanEnd, rule.Style));
+                            spans.Add(new HighlightSpan(0, spanEnd, rule.Style, priority));
                         }
 
                         if (!end.Success)

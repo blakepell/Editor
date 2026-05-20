@@ -7,8 +7,11 @@ comment "<!--|-->"
 ## Emphasis tags
 color brightwhite start="<([biu]|em|strong)[^>]*>" end="</([biu]|em|strong)>"
 
-## Tags
+## Tags (base color for the entire <...> region including brackets)
 color cyan start="<" end=">"
+
+## Tag name (overrides the base cyan; must be declared after the base rule)
+color brightcyan "</?[[:alpha:]][[:alnum:]:-]*"
 
 ## Attributes
 color brightblue "[[:space:]](abbr|accept(-charset)?|accesskey|action|[av]?link|alt|archive|axis|background|(bg)?color|border)="
