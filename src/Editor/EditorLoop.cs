@@ -376,6 +376,9 @@ namespace NEdit.Editor
             string searchTerm = string.Empty;
             string filePattern = "*";
             IReadOnlyList<GrepResult> results = [];
+            bool pendingSearch = false;
+            long lastInputTime = 0;
+            int debounceMs = _appSettings.Options.GrepDebounceMs;
 
             void RefreshResults()
             {
@@ -386,9 +389,23 @@ namespace NEdit.Editor
                 results = GetGrepResults(Directory.GetCurrentDirectory(), searchTerm, filePattern);
             }
 
+            _renderer.RenderGrepSearch(_session, rawInput, cursor, results, selectedIndex, filePattern);
+
             while (true)
             {
-                _renderer.RenderGrepSearch(_session, rawInput, cursor, results, selectedIndex, filePattern);
+                // Poll for keypresses so the debounce timer can fire between strokes.
+                while (!_session.Console.KeyAvailable)
+                {
+                    Thread.Sleep(_appSettings.Options.KeyboardPollingInterval);
+
+                    if (pendingSearch && Stopwatch.GetElapsedTime(lastInputTime).TotalMilliseconds >= debounceMs)
+                    {
+                        RefreshResults();
+                        pendingSearch = false;
+                        _renderer.RenderGrepSearch(_session, rawInput, cursor, results, selectedIndex, filePattern);
+                    }
+                }
+
                 ConsoleKeyInfo key = _session.Console.ReadKey();
 
                 if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
@@ -414,6 +431,8 @@ namespace NEdit.Editor
                     _session.MoveTo(selected.LineNumber - 1, 0);
                     return;
                 }
+
+                bool inputChanged = false;
 
                 if (key.Key is ConsoleKey.UpArrow)
                 {
@@ -453,19 +472,27 @@ namespace NEdit.Editor
                 {
                     rawInput = rawInput.Remove(cursor - 1, 1);
                     cursor--;
-                    RefreshResults();
+                    inputChanged = true;
                 }
                 else if (key.Key is ConsoleKey.Delete && cursor < rawInput.Length)
                 {
                     rawInput = rawInput.Remove(cursor, 1);
-                    RefreshResults();
+                    inputChanged = true;
                 }
                 else if (!char.IsControl(key.KeyChar))
                 {
                     rawInput = rawInput.Insert(cursor, key.KeyChar.ToString());
                     cursor++;
-                    RefreshResults();
+                    inputChanged = true;
                 }
+
+                if (inputChanged)
+                {
+                    lastInputTime = Stopwatch.GetTimestamp();
+                    pendingSearch = true;
+                }
+
+                _renderer.RenderGrepSearch(_session, rawInput, cursor, results, selectedIndex, filePattern);
             }
         }
 

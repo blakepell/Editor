@@ -72,6 +72,15 @@ namespace NEdit.Editor
         /// The polling interval in milliseconds. The default is <c>25</c>.
         /// </value>
         public int KeyboardPollingInterval { get; set; } = 25;
+
+        /// <summary>
+        /// Gets or sets the debounce delay for the grep search feature.
+        /// </summary>
+        /// <value>
+        /// The number of milliseconds to wait after the last keystroke before
+        /// executing a file search. The default is <c>500</c>.
+        /// </value>
+        public int GrepDebounceMs { get; set; } = 500;
     }
 
     /// <summary>
