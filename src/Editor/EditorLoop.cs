@@ -23,6 +23,12 @@ namespace NEdit.Editor
             [".ps1"] = ("pwsh.exe \"{file}\"", false),
             [".c"] = ("make", true),
         };
+
+        /// <summary>
+        /// Caches the binary-vs-text classification for each file path so <see cref="IsBinaryFile"/>
+        /// does not re-read bytes on every grep keypress.
+        /// </summary>
+        private static readonly Dictionary<string, bool> _binaryFileCache = new(StringComparer.OrdinalIgnoreCase);
         private readonly EditorSession _session;
         private readonly Renderer _renderer;
         private readonly AppSettings _appSettings;
@@ -513,17 +519,26 @@ namespace NEdit.Editor
         /// </summary>
         private static bool IsBinaryFile(string path)
         {
+            if (_binaryFileCache.TryGetValue(path, out bool cached))
+            {
+                return cached;
+            }
+
+            bool result;
             try
             {
                 Span<byte> buffer = stackalloc byte[512];
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 int read = stream.Read(buffer);
-                return buffer[..read].Contains((byte)0);
+                result = buffer[..read].Contains((byte)0);
             }
             catch
             {
-                return true;
+                result = true;
             }
+
+            _binaryFileCache[path] = result;
+            return result;
         }
 
 
