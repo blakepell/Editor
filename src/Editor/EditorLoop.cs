@@ -154,7 +154,7 @@ namespace NEdit.Editor
             }
             else if (IsCtrl(key, 'G'))
             {
-                InsertGuid();
+                ShowGrepSearch();
             }
             else if (IsCtrl(key, 'X'))
             {
@@ -360,6 +360,153 @@ namespace NEdit.Editor
         {
             _session.InsertGuid();
         }
+
+        private void ShowGrepSearch()
+        {
+            _session.EndTypingGroup();
+            string query = string.Empty;
+            int cursor = 0;
+            int selectedIndex = 0;
+            IReadOnlyList<GrepResult> results = [];
+
+            while (true)
+            {
+                _renderer.RenderGrepSearch(_session, query, cursor, results, selectedIndex);
+                ConsoleKeyInfo key = _session.Console.ReadKey();
+
+                if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.Enter)
+                {
+                    if (results.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    GrepResult selected = results[selectedIndex];
+                    if (!ConfirmSaveModifiedBuffer())
+                    {
+                        return;
+                    }
+
+                    _session.OpenFile(selected.FilePath);
+                    _session.MoveTo(selected.LineNumber - 1, 0);
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.UpArrow)
+                {
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                }
+                else if (key.Key is ConsoleKey.DownArrow)
+                {
+                    selectedIndex = Math.Min(Math.Max(0, results.Count - 1), selectedIndex + 1);
+                }
+                else if (key.Key is ConsoleKey.Home)
+                {
+                    cursor = 0;
+                }
+                else if (key.Key is ConsoleKey.End)
+                {
+                    cursor = query.Length;
+                }
+                else if (key.Key is ConsoleKey.LeftArrow)
+                {
+                    cursor = Math.Max(0, cursor - 1);
+                }
+                else if (key.Key is ConsoleKey.RightArrow)
+                {
+                    cursor = Math.Min(query.Length, cursor + 1);
+                }
+                else if (key.Key is ConsoleKey.Backspace && cursor > 0)
+                {
+                    query = query.Remove(cursor - 1, 1);
+                    cursor--;
+                    selectedIndex = 0;
+                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                }
+                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                {
+                    query = query.Remove(cursor, 1);
+                    selectedIndex = 0;
+                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    cursor++;
+                    selectedIndex = 0;
+                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                }
+            }
+        }
+
+        private static IReadOnlyList<GrepResult> GetGrepResults(string dir, string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return [];
+            }
+
+            var results = new List<GrepResult>();
+            try
+            {
+                foreach (string file in Directory.GetFiles(dir))
+                {
+                    string fileName = Path.GetFileName(file);
+                    try
+                    {
+                        if (IsBinaryFile(file))
+                        {
+                            continue;
+                        }
+
+                        string[] lines = File.ReadAllLines(file);
+                        for (int i = 0; i < lines.Length; i++)
+                        {
+                            if (lines[i].Contains(query, StringComparison.OrdinalIgnoreCase))
+                            {
+                                results.Add(new GrepResult(file, fileName, i + 1, lines[i]));
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Skip files that cannot be read (binary, locked, etc.)
+                    }
+                }
+            }
+            catch
+            {
+                // Skip if the directory cannot be enumerated.
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Returns <see langword="true" /> if the file appears to be binary based on the presence
+        /// of null bytes in the first 512 bytes of the file.
+        /// </summary>
+        private static bool IsBinaryFile(string path)
+        {
+            try
+            {
+                Span<byte> buffer = stackalloc byte[512];
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                int read = stream.Read(buffer);
+                return buffer[..read].Contains((byte)0);
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
 
         private void ShowCommandPalette()
         {

@@ -273,7 +273,7 @@ namespace NEdit.Editor
             (string Key, string Text)[][] rows =
             [
                 [("^T", "Commands"), ("^N", "New"), ("F5", "Run"), ("^X", "Exit"), ("^O", "Open"), ("^!S", "Save"), ("^F", "Find"), ("^H", "Replace")],
-                [("^K", "Cut"), ("^P", "Paste"), ("", ""), ("^C", "Copy"), ("^Z", "Undo"), ("^!Z", "Redo"), ("^G", "GUID"), ("^L", "Line #s")]
+                [("^K", "Cut"), ("^P", "Paste"), ("", ""), ("^C", "Copy"), ("^Z", "Undo"), ("^!Z", "Redo"), ("^G", "Grep"), ("^L", "Line #s")]
             ];
 
             for (int i = 0; i < rows.Length; i++)
@@ -488,6 +488,123 @@ namespace NEdit.Editor
             }
         }
 
+        /// <summary>
+        /// Renders the editor with the grep search overlay.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
+        /// <param name="query">The grep search query.</param>
+        /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
+        /// <param name="results">The grep results currently visible in the panel.</param>
+        /// <param name="selectedIndex">The selected result index.</param>
+        public void RenderGrepSearch(
+            EditorSession session,
+            string query,
+            int queryCursor,
+            IReadOnlyList<GrepResult> results,
+            int selectedIndex)
+        {
+            _console.BeginFrame();
+            _console.ShowCursor(false);
+            _console.UseBlockCursor();
+
+            TerminalSize size = _console.Size;
+            if (size != _lastSize)
+            {
+                _console.Clear();
+                _lastSize = size;
+            }
+
+            session.Layout = EditorLayout.From(size);
+            session.EnsureCursorVisible();
+
+            DrawTitle(session);
+            DrawEditor(session);
+            int inputColumn = DrawGrepInput(session, query, queryCursor);
+            DrawShortcuts(session);
+            DrawGrepPanel(session, results, selectedIndex);
+            _console.MoveCursor(session.Layout.StatusRow, inputColumn);
+            _console.UseBlockCursor();
+            _console.ShowCursor(true);
+            _console.EndFrame();
+        }
+
+        private int DrawGrepInput(EditorSession session, string query, int cursor)
+        {
+            int row = session.Layout.StatusRow;
+            int columns = session.Layout.Columns;
+            string prefix = "Grep: ";
+            int inputWidth = Math.Max(0, columns - prefix.Length);
+            int start = 0;
+            if (query.Length > inputWidth)
+            {
+                start = Math.Clamp(cursor - inputWidth + 1, 0, query.Length - inputWidth);
+            }
+
+            string visibleInput = inputWidth == 0
+                ? string.Empty
+                : query.Substring(start, Math.Min(inputWidth, query.Length - start));
+            string text = Fit(prefix + visibleInput, columns);
+            WritePadded(row, text, ConsoleStyle.Status);
+            return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
+        }
+
+        private void DrawGrepPanel(EditorSession session, IReadOnlyList<GrepResult> results, int selectedIndex)
+        {
+            int height = session.Layout.StatusRow - session.Layout.EditorTop;
+            int columns = session.Layout.Columns;
+            if (height < 3 || columns < 10)
+            {
+                return;
+            }
+
+            int width = Math.Min(columns, Math.Clamp(columns * 2 / 3, 40, 80));
+            int left = Math.Max(0, columns - width);
+            int top = session.Layout.EditorTop;
+            int bottom = top + height - 1;
+            int innerWidth = Math.Max(0, width - 2);
+
+            DrawPanelBorder(top, left, width, " Grep Results ");
+            for (int row = top + 1; row < bottom; row++)
+            {
+                _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
+                WritePadded(row, left + 1, ReadOnlySpan<char>.Empty, innerWidth, ConsoleStyle.Normal);
+                _console.WriteAt(row, left + width - 1, "|", ConsoleStyle.ShortcutKey);
+            }
+
+            _console.WriteAt(bottom, left, "+" + new string('-', Math.Max(0, width - 2)) + "+", ConsoleStyle.ShortcutKey);
+
+            int listTop = top + 1;
+            int listRows = Math.Max(0, bottom - listTop);
+            if (results.Count == 0)
+            {
+                if (listRows > 0)
+                {
+                    _console.WriteAt(listTop, left + 1, Fit(" No matches", innerWidth).PadRight(innerWidth), ConsoleStyle.Normal);
+                }
+
+                return;
+            }
+
+            int first = 0;
+            if (selectedIndex >= listRows)
+            {
+                first = selectedIndex - listRows + 1;
+            }
+
+            for (int i = 0; i < listRows && first + i < results.Count; i++)
+            {
+                int resultIndex = first + i;
+                GrepResult result = results[resultIndex];
+                bool selected = resultIndex == selectedIndex;
+                string marker = selected ? ">" : " ";
+                string location = $"{result.FileName}:{result.LineNumber}";
+                string matchText = SanitizeForDisplay(result.LineText.TrimStart());
+                string label = $"{marker} {location}  {matchText}";
+                ConsoleStyle style = selected ? ConsoleStyle.Selection : ConsoleStyle.Normal;
+                _console.WriteAt(listTop + i, left + 1, Fit(label, innerWidth).PadRight(innerWidth), style);
+            }
+        }
+
         private void PositionCursor(EditorSession session)
         {
             int row = session.Layout.EditorTop + session.Cursor.Line - session.ViewTop;
@@ -538,6 +655,31 @@ namespace NEdit.Editor
             }
 
             return value.Length <= width ? value : value[..width];
+        }
+
+        /// <summary>
+        /// Replaces control characters (other than tab) with a space so they cannot
+        /// corrupt the terminal layout when rendered in a single-line panel entry.
+        /// </summary>
+        private static string SanitizeForDisplay(string value)
+        {
+            if (value.Length == 0)
+            {
+                return value;
+            }
+
+            char[]? buf = null;
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (char.IsControl(c) && c != '\t')
+                {
+                    buf ??= value.ToCharArray();
+                    buf[i] = ' ';
+                }
+            }
+
+            return buf is null ? value : new string(buf);
         }
     }
 
