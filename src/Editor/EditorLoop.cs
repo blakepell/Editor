@@ -712,6 +712,16 @@ namespace NEdit.Editor
                         }
 
                         _session.OpenFile(path);
+
+                        if (_appSettings.Options.OpenFileChangesWorkingDirectory)
+                        {
+                            string? fileDir = Path.GetDirectoryName(path);
+                            if (!string.IsNullOrEmpty(fileDir))
+                            {
+                                Directory.SetCurrentDirectory(fileDir);
+                            }
+                        }
+
                         return;
                     }
                 }

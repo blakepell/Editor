@@ -56,6 +56,16 @@ namespace NEdit.Editor
         public int TabSize { get; set; } = 4;
 
         /// <summary>
+        /// Gets or sets a value that indicates whether opening a file changes the working directory
+        /// to the directory that contains the opened file.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the working directory should follow the opened file;
+        /// otherwise, <see langword="false" />. The default is <see langword="false" />.
+        /// </value>
+        public bool OpenFileChangesWorkingDirectory { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets the delay between keyboard polling checks.
         /// </summary>
         /// <value>
