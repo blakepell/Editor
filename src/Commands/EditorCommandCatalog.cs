@@ -15,6 +15,14 @@ namespace NEdit.Commands
     /// </summary>
     internal sealed class EditorCommandCatalog
     {
+        /// <summary>
+        /// Shared <see cref="HttpClient"/> used by the Insert from URL command.
+        /// </summary>
+        private static readonly HttpClient _httpClient = new()
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
         private readonly List<EditorCommand> _commands;
 
         private EditorCommandCatalog(List<EditorCommand> commands)
@@ -165,6 +173,15 @@ namespace NEdit.Commands
                         context => context is not null),
                     alias: "shell",
                     argumentPrompt: "Command"),
+                new EditorCommand(
+                    "Insert Text from URL",
+                    "Perform an HTTP GET on a URL and insert the response body at the cursor.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        InsertFromUrl,
+                        context => context?.Session.IsReadOnly == false),
+                    alias: "url",
+                    argumentPrompt: "URL"),
                 new EditorCommand(
                     "Goto Line",
                     "Move the cursor to the specified line number.",
@@ -372,6 +389,35 @@ namespace NEdit.Commands
             context.Session.SetStatus(
                 exitCode == 0 ? $"Shell: {command}" : $"Shell: {command} (exit {exitCode})",
                 alert: exitCode != 0);
+        }
+
+        private static void InsertFromUrl(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? url = context.Argument?.Trim();
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                context.Session.SetStatus("Enter a URL.", alert: true);
+                return;
+            }
+
+            try
+            {
+                string text = _httpClient.GetStringAsync(url).GetAwaiter().GetResult();
+                context.Session.InsertText(text);
+                context.Session.SetStatus($"Inserted {text.Length:N0} characters from {url}");
+            }
+            catch (Exception ex)
+            {
+                string message = ex is TaskCanceledException or TimeoutException
+                    ? $"Request timed out: {url}"
+                    : $"Error fetching URL: {ex.Message}";
+                context.Session.SetStatus(message, alert: true);
+            }
         }
 
         private static void GotoLine(EditorCommandContext? context)
