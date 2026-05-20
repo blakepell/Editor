@@ -364,14 +364,25 @@ namespace NEdit.Editor
         private void ShowGrepSearch()
         {
             _session.EndTypingGroup();
-            string query = string.Empty;
+            string rawInput = string.Empty;
             int cursor = 0;
             int selectedIndex = 0;
+            string searchTerm = string.Empty;
+            string filePattern = "*";
             IReadOnlyList<GrepResult> results = [];
+
+            void RefreshResults()
+            {
+                ParsedCommand parsed = CommandLineParser.Parse(rawInput);
+                searchTerm = parsed.GetPositional(0) ?? string.Empty;
+                filePattern = parsed.GetPositional(1) ?? "*";
+                selectedIndex = 0;
+                results = GetGrepResults(Directory.GetCurrentDirectory(), searchTerm, filePattern);
+            }
 
             while (true)
             {
-                _renderer.RenderGrepSearch(_session, query, cursor, results, selectedIndex);
+                _renderer.RenderGrepSearch(_session, rawInput, cursor, results, selectedIndex, filePattern);
                 ConsoleKeyInfo key = _session.Console.ReadKey();
 
                 if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
@@ -422,7 +433,7 @@ namespace NEdit.Editor
                 }
                 else if (key.Key is ConsoleKey.End)
                 {
-                    cursor = query.Length;
+                    cursor = rawInput.Length;
                 }
                 else if (key.Key is ConsoleKey.LeftArrow)
                 {
@@ -430,42 +441,40 @@ namespace NEdit.Editor
                 }
                 else if (key.Key is ConsoleKey.RightArrow)
                 {
-                    cursor = Math.Min(query.Length, cursor + 1);
+                    cursor = Math.Min(rawInput.Length, cursor + 1);
                 }
                 else if (key.Key is ConsoleKey.Backspace && cursor > 0)
                 {
-                    query = query.Remove(cursor - 1, 1);
+                    rawInput = rawInput.Remove(cursor - 1, 1);
                     cursor--;
-                    selectedIndex = 0;
-                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                    RefreshResults();
                 }
-                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                else if (key.Key is ConsoleKey.Delete && cursor < rawInput.Length)
                 {
-                    query = query.Remove(cursor, 1);
-                    selectedIndex = 0;
-                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                    rawInput = rawInput.Remove(cursor, 1);
+                    RefreshResults();
                 }
                 else if (!char.IsControl(key.KeyChar))
                 {
-                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    rawInput = rawInput.Insert(cursor, key.KeyChar.ToString());
                     cursor++;
-                    selectedIndex = 0;
-                    results = GetGrepResults(Directory.GetCurrentDirectory(), query);
+                    RefreshResults();
                 }
             }
         }
 
-        private static IReadOnlyList<GrepResult> GetGrepResults(string dir, string query)
+        private static IReadOnlyList<GrepResult> GetGrepResults(string dir, string query, string filePattern = "*")
         {
             if (string.IsNullOrWhiteSpace(query))
             {
                 return [];
             }
 
+            string pattern = string.IsNullOrWhiteSpace(filePattern) ? "*" : filePattern;
             var results = new List<GrepResult>();
             try
             {
-                foreach (string file in Directory.GetFiles(dir))
+                foreach (string file in Directory.GetFiles(dir, pattern))
                 {
                     string fileName = Path.GetFileName(file);
                     try

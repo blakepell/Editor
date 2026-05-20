@@ -492,16 +492,18 @@ namespace NEdit.Editor
         /// Renders the editor with the grep search overlay.
         /// </summary>
         /// <param name="session">The editor session to render.</param>
-        /// <param name="query">The grep search query.</param>
+        /// <param name="query">The raw grep input as typed by the user.</param>
         /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
         /// <param name="results">The grep results currently visible in the panel.</param>
         /// <param name="selectedIndex">The selected result index.</param>
+        /// <param name="filePattern">The active file pattern filter derived from the input.</param>
         public void RenderGrepSearch(
             EditorSession session,
             string query,
             int queryCursor,
             IReadOnlyList<GrepResult> results,
-            int selectedIndex)
+            int selectedIndex,
+            string filePattern = "*")
         {
             _console.BeginFrame();
             _console.ShowCursor(false);
@@ -521,7 +523,7 @@ namespace NEdit.Editor
             DrawEditor(session);
             int inputColumn = DrawGrepInput(session, query, queryCursor);
             DrawShortcuts(session);
-            DrawGrepPanel(session, results, selectedIndex);
+            DrawGrepPanel(session, results, selectedIndex, filePattern);
             _console.MoveCursor(session.Layout.StatusRow, inputColumn);
             _console.UseBlockCursor();
             _console.ShowCursor(true);
@@ -548,7 +550,7 @@ namespace NEdit.Editor
             return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
         }
 
-        private void DrawGrepPanel(EditorSession session, IReadOnlyList<GrepResult> results, int selectedIndex)
+        private void DrawGrepPanel(EditorSession session, IReadOnlyList<GrepResult> results, int selectedIndex, string filePattern = "*")
         {
             int height = session.Layout.StatusRow - session.Layout.EditorTop;
             int columns = session.Layout.Columns;
@@ -563,7 +565,10 @@ namespace NEdit.Editor
             int bottom = top + height - 1;
             int innerWidth = Math.Max(0, width - 2);
 
-            DrawPanelBorder(top, left, width, " Grep Results ");
+            string panelTitle = string.IsNullOrEmpty(filePattern) || filePattern == "*"
+                ? " Grep Results "
+                : $" Grep Results [{filePattern}] ";
+            DrawPanelBorder(top, left, width, panelTitle);
             for (int row = top + 1; row < bottom; row++)
             {
                 _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
