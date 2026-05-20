@@ -406,6 +406,16 @@ namespace NEdit.Editor
                 {
                     selectedIndex = Math.Min(Math.Max(0, results.Count - 1), selectedIndex + 1);
                 }
+                else if (key.Key is ConsoleKey.PageUp)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Max(0, selectedIndex - pageSize);
+                }
+                else if (key.Key is ConsoleKey.PageDown)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Min(Math.Max(0, results.Count - 1), selectedIndex + pageSize);
+                }
                 else if (key.Key is ConsoleKey.Home)
                 {
                     cursor = 0;
