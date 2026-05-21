@@ -188,16 +188,16 @@ namespace NEdit.Editor
                 string visible = session.GetDisplayLine(bufferLine);
                 int visibleStart = Math.Min(session.ViewLeft, visible.Length);
                 WritePadded(row, margin, visible.AsSpan(visibleStart), Math.Max(0, columns - margin), ConsoleStyle.Normal);
-                DrawHighlights(session, highlightsByLine, bufferLine, row, margin);
+                DrawHighlights(session, highlightsByLine, bufferLine, row, margin, visible);
 
                 if (session.Selection is Position mark)
                 {
-                    DrawSelectionForLine(session, mark, bufferLine, row, margin);
+                    DrawSelectionForLine(session, mark, bufferLine, row, margin, visible);
                 }
             }
         }
 
-        private void DrawHighlights(EditorSession session, Dictionary<int, List<HighlightSpan>> highlightsByLine, int bufferLine, int row, int margin)
+        private void DrawHighlights(EditorSession session, Dictionary<int, List<HighlightSpan>> highlightsByLine, int bufferLine, int row, int margin, string expandedLine)
         {
             int viewLeft = session.ViewLeft;
             int editColumns = Math.Max(0, session.Layout.Columns - margin);
@@ -206,32 +206,39 @@ namespace NEdit.Editor
                 return;
             }
 
-            string line = session.Document.LineAt(bufferLine).ToString();
+            string rawLine = session.Document.LineAt(bufferLine).ToString();
             if (!highlightsByLine.TryGetValue(bufferLine, out List<HighlightSpan>? spans))
             {
                 return;
             }
 
+            int tabSize = session.Options.TabSize;
+
             foreach (HighlightSpan span in spans)
             {
-                int start = Math.Max(span.Start, viewLeft);
-                int end = Math.Min(span.Start + span.Length, viewLeft + editColumns);
-                if (end <= start || start >= line.Length)
+                // Span offsets are raw character indices; convert to visual columns to account for tab expansion.
+                int visualStart = RawIndexToVisualColumn(rawLine, span.Start, tabSize);
+                int visualEnd = RawIndexToVisualColumn(rawLine, span.Start + span.Length, tabSize);
+
+                int colStart = Math.Max(visualStart, viewLeft);
+                int colEnd = Math.Min(visualEnd, viewLeft + editColumns);
+                if (colEnd <= colStart)
                 {
                     continue;
                 }
 
-                int length = Math.Min(end - start, line.Length - start);
-                if (length <= 0)
+                int sliceStart = Math.Min(colStart, expandedLine.Length);
+                int sliceLen = Math.Min(colEnd - colStart, expandedLine.Length - sliceStart);
+                if (sliceLen <= 0)
                 {
                     continue;
                 }
 
-                _console.WriteAt(row, margin + start - viewLeft, line.AsSpan(start, length), span.Style);
+                _console.WriteAt(row, margin + colStart - viewLeft, expandedLine.AsSpan(sliceStart, sliceLen), span.Style);
             }
         }
 
-        private void DrawSelectionForLine(EditorSession session, Position mark, int bufferLine, int row, int margin)
+        private void DrawSelectionForLine(EditorSession session, Position mark, int bufferLine, int row, int margin, string expandedLine)
         {
             var (start, end) = DocumentBuffer.Order(mark, session.Cursor);
             if (bufferLine < start.Line || bufferLine > end.Line)
@@ -247,16 +254,42 @@ namespace NEdit.Editor
                 return;
             }
 
+            // Cursor/mark columns are raw character indices; convert to visual columns for tab-expanded display.
+            string rawLine = session.Document.LineAt(bufferLine).ToString();
+            int tabSize = session.Options.TabSize;
+            int visualStart = RawIndexToVisualColumn(rawLine, startColumn, tabSize);
+            int visualEnd = RawIndexToVisualColumn(rawLine, endColumn, tabSize);
+
             int viewLeft = session.ViewLeft;
-            int first = Math.Max(startColumn, viewLeft);
-            int last = Math.Min(endColumn, viewLeft + session.Layout.EditColumns);
+            int first = Math.Max(visualStart, viewLeft);
+            int last = Math.Min(visualEnd, viewLeft + session.Layout.EditColumns);
             if (last <= first)
             {
                 return;
             }
 
-            string selected = session.Document.LineAt(bufferLine).Substring(first, last - first);
-            _console.WriteAt(row, margin + first - viewLeft, selected, ConsoleStyle.Selection);
+            int sliceStart = Math.Min(first, expandedLine.Length);
+            int sliceLen = Math.Min(last - first, expandedLine.Length - sliceStart);
+            if (sliceLen <= 0)
+            {
+                return;
+            }
+
+            _console.WriteAt(row, margin + first - viewLeft, expandedLine.AsSpan(sliceStart, sliceLen), ConsoleStyle.Selection);
+        }
+
+        /// <summary>
+        /// Converts a raw character index to the visual column position, accounting for tab expansion.
+        /// </summary>
+        private static int RawIndexToVisualColumn(string rawLine, int rawIndex, int tabSize)
+        {
+            int col = 0;
+            int limit = Math.Min(rawIndex, rawLine.Length);
+            for (int i = 0; i < limit; i++)
+            {
+                col += rawLine[i] == '\t' ? tabSize - col % tabSize : 1;
+            }
+            return col;
         }
 
         private void DrawStatus(EditorSession session)
