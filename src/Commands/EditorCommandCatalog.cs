@@ -18,9 +18,9 @@ namespace NEdit.Commands
     internal sealed class EditorCommandCatalog
     {
         /// <summary>
-        /// Shared <see cref="HttpClient"/> used by the Insert from URL command.
+        /// Shared <see cref="System.Net.Http.HttpClient"/> used by the Insert from URL command.
         /// </summary>
-        private static readonly HttpClient _httpClient = new()
+        private static readonly HttpClient HttpClient = new()
         {
             Timeout = TimeSpan.FromSeconds(30)
         };
@@ -595,7 +595,7 @@ namespace NEdit.Commands
             }
         }
 
-        private static readonly JsonWriterOptions _jsonIndentedWriterOptions = new() { Indented = true };
+        private static readonly JsonWriterOptions JsonIndentedWriterOptions = new() { Indented = true };
 
         private static bool IsJsonContext(EditorCommandContext? context)
         {
@@ -688,7 +688,7 @@ namespace NEdit.Commands
             {
                 using JsonDocument jsonDoc = JsonDocument.Parse(input);
                 using var ms = new MemoryStream();
-                using var writer = new Utf8JsonWriter(ms, _jsonIndentedWriterOptions);
+                using var writer = new Utf8JsonWriter(ms, JsonIndentedWriterOptions);
                 jsonDoc.RootElement.WriteTo(writer);
                 writer.Flush();
                 string result = Encoding.UTF8.GetString(ms.ToArray());
@@ -846,7 +846,7 @@ namespace NEdit.Commands
 
             try
             {
-                string text = _httpClient.GetStringAsync(url).GetAwaiter().GetResult();
+                string text = HttpClient.GetStringAsync(url).GetAwaiter().GetResult();
                 context.Session.InsertText(text);
                 context.Session.SetStatus($"Inserted {text.Length:N0} characters from {url}");
             }

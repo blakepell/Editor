@@ -228,7 +228,6 @@ namespace NEdit.Editor
             ["md"] = ["markdown"],
             ["mkd"] = ["markdown"],
             ["mkdn"] = ["markdown"],
-            ["moon"] = ["moonscript"],
             ["m"] = ["objc", "octave"],
             ["patch"] = ["patch"],
             ["php"] = ["php"],

@@ -838,19 +838,19 @@ namespace NEdit.Editor
         /// <returns>
         /// <see langword="true" /> if the selection was replaced; otherwise, <see langword="false" />.
         /// </returns>
-        public bool ReplaceSelection(string replacement, string statusMessage)
+        public void ReplaceSelection(string replacement, string statusMessage)
         {
             if (IsReadOnly)
             {
                 ReadOnlyWarning();
-                return false;
+                return;
             }
 
             if (SelectionRange is not { } range)
             {
                 EndTypingGroup();
                 SetStatus("Select text first", alert: true);
-                return false;
+                return;
             }
 
             WithUndo(() =>
@@ -861,7 +861,6 @@ namespace NEdit.Editor
             });
 
             SetStatus(statusMessage);
-            return true;
         }
 
         /// <summary>
@@ -924,12 +923,12 @@ namespace NEdit.Editor
         /// <returns>
         /// <see langword="true" /> if a match was found; otherwise, <see langword="false" />.
         /// </returns>
-        public bool Search(string needle, bool backwards = false)
+        public void Search(string needle, bool backwards = false)
         {
             EndTypingGroup();
             if (string.IsNullOrEmpty(needle))
             {
-                return false;
+                return;
             }
 
             LastSearch = needle;
@@ -958,7 +957,7 @@ namespace NEdit.Editor
                     {
                         MoveTo(line, found);
                         SetStatus($"Found: {needle}");
-                        return true;
+                        return;
                     }
 
                     line += backwards ? -1 : 1;
@@ -973,7 +972,6 @@ namespace NEdit.Editor
             }
 
             SetStatus($"Not found: {needle}", alert: true);
-            return false;
         }
 
         /// <summary>
@@ -1368,9 +1366,8 @@ namespace NEdit.Editor
             try
             {
                 bool blankUntitledBuffer = Document.FilePath is null &&
-                    !Document.Modified &&
-                    Document.LineCount == 1 &&
-                    Document.LineAt(0).Length == 0;
+                                           Document is { Modified: false, LineCount: 1 } &&
+                                           Document.LineAt(0).Length == 0;
                 string text = File.ReadAllText(path);
                 InsertText(text);
                 if (blankUntitledBuffer)

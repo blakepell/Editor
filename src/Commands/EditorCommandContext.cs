@@ -46,7 +46,9 @@ namespace NEdit.Commands
         /// <returns>
         /// <see langword="true" /> if the selection was replaced; otherwise, <see langword="false" />.
         /// </returns>
-        public bool ReplaceSelection(string replacement, string statusMessage) =>
+        public void ReplaceSelection(string replacement, string statusMessage)
+        {
             Session.ReplaceSelection(replacement, statusMessage);
+        }
     }
 }

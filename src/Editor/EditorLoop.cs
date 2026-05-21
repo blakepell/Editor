@@ -28,7 +28,7 @@ namespace NEdit.Editor
         /// Caches the binary-vs-text classification for each file path so <see cref="IsBinaryFile"/>
         /// does not re-read bytes on every grep keypress.
         /// </summary>
-        private static readonly Dictionary<string, bool> _binaryFileCache = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, bool> BinaryFileCache = new(StringComparer.OrdinalIgnoreCase);
         private readonly EditorSession _session;
         private readonly Renderer _renderer;
         private readonly AppSettings _appSettings;
@@ -431,18 +431,13 @@ namespace NEdit.Editor
             }
         }
 
-        private void InsertGuid()
-        {
-            _session.InsertGuid();
-        }
-
         private void ShowGrepSearch()
         {
             _session.EndTypingGroup();
             string rawInput = string.Empty;
             int cursor = 0;
             int selectedIndex = 0;
-            string searchTerm = string.Empty;
+            string? searchTerm;
             string filePattern = "*";
             IReadOnlyList<GrepResult> results = [];
             bool pendingSearch = false;
@@ -616,7 +611,7 @@ namespace NEdit.Editor
         /// </summary>
         private static bool IsBinaryFile(string path)
         {
-            if (_binaryFileCache.TryGetValue(path, out bool cached))
+            if (BinaryFileCache.TryGetValue(path, out bool cached))
             {
                 return cached;
             }
@@ -634,7 +629,7 @@ namespace NEdit.Editor
                 result = true;
             }
 
-            _binaryFileCache[path] = result;
+            BinaryFileCache[path] = result;
             return result;
         }
 
