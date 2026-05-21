@@ -80,7 +80,7 @@ namespace NEdit.Collections
             this.Capacity = capacity;
         }
 
-        private bool _updating = false;
+        private bool _updating;
 
         /// <summary>
         /// Starts a bulk update of items where the change notifications are suppressed until the EndUpdate when a single

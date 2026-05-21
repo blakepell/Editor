@@ -340,7 +340,7 @@ namespace NEdit.Editor
 
         private static Encoding DetectEncoding(byte[] bytes)
         {
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (bytes is [0xEF, 0xBB, 0xBF, ..])
             {
                 return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
             }
@@ -350,7 +350,7 @@ namespace NEdit.Editor
 
         private static byte[] RemoveBom(byte[] bytes)
         {
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (bytes is [0xEF, 0xBB, 0xBF, ..])
             {
                 return bytes[3..];
             }

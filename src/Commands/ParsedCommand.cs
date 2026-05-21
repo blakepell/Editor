@@ -64,6 +64,6 @@ namespace NEdit.Commands
         /// The switch value, or <see langword="null" /> when the switch was not present or has no value.
         /// </returns>
         public string? GetSwitch(string name) =>
-            _switches.TryGetValue(name, out string? value) ? value : null;
+            _switches.GetValueOrDefault(name);
     }
 }

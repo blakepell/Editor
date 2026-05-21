@@ -142,7 +142,7 @@ namespace NEdit.Commands
                     "Run the garbage collector to free up memory.",
                     null,
                     new RelayCommand<EditorCommandContext>(
-                        context => GC.Collect(),
+                        _ => GC.Collect(),
                         context => context is not null)),
                 new EditorCommand(
                     "Insert Date",
@@ -402,7 +402,7 @@ namespace NEdit.Commands
                     null,
                     new RelayCommand<EditorCommandContext>(
                         ValidateJson,
-                        context => IsJsonContext(context))),
+                        IsJsonContext)),
                 new EditorCommand(
                     "Open Recent Files",
                     "Browse and open a recently accessed file.",

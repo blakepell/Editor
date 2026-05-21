@@ -531,7 +531,9 @@ namespace NEdit.Editor
                     }
                 }
 
-                _singleLineCache[lineIndex] = (text, spans);
+                // Store a snapshot so multiline passes that mutate spansByLine[lineIndex]
+                // cannot corrupt the cached single-line spans.
+                _singleLineCache[lineIndex] = (text, new List<HighlightSpan>(spans));
             }
 
             for (int ruleIndex = 0; ruleIndex < _syntax.Rules.Count; ruleIndex++)

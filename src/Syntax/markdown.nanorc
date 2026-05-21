@@ -1,7 +1,8 @@
 syntax "Markdown" "\.(md|mkd|mkdn|markdown)$"
 
-# Tables (Github extension)
-color cyan ".*[ :]\|[ :].*"
+# Tables (Github extension) — require line to start with | so pipe characters
+# inside prose (e.g. shell pipelines like "make | grep") do not false-positive.
+color cyan "^[[:space:]]*\|.*\|"
 
 # quotes
 color brightblack  start="^>" end="^$"

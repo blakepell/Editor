@@ -406,7 +406,7 @@ namespace NEdit.Editor
                 return;
             }
 
-            _session.ReplaceAll(needle, replacement);
+            _ = _session.ReplaceAll(needle, replacement);
         }
 
         private void GoToLine()

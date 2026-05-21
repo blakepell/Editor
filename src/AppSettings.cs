@@ -57,8 +57,5 @@ namespace NEdit
     /// This context keeps settings serialization compatible with AOT publishing.
     /// </remarks>
     [JsonSerializable(typeof(AppSettings))]
-    internal partial class AppSettingsJsonContext : JsonSerializerContext
-    {
-
-    }
+    internal partial class AppSettingsJsonContext : JsonSerializerContext;
 }
