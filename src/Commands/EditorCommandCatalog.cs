@@ -5,6 +5,7 @@
  */
 
 using CommunityToolkit.Mvvm.Input;
+using NEdit.Memory;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -56,6 +57,7 @@ namespace NEdit.Commands
         /// </returns>
         public static EditorCommandCatalog CreateDefault()
         {
+            var appSettings = AppServices.GetRequiredService<AppSettings>();
             return new EditorCommandCatalog(
             [
                 new EditorCommand(
@@ -400,7 +402,15 @@ namespace NEdit.Commands
                     null,
                     new RelayCommand<EditorCommandContext>(
                         ValidateJson,
-                        context => IsJsonContext(context)))
+                        context => IsJsonContext(context))),
+                new EditorCommand(
+                    "Open Recent Files",
+                    "Browse and open a recently accessed file.",
+                    "Ctrl+Alt+O",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null && appSettings.RecentFiles.Count > 0),
+                    useOpenRecentFiles: true)
             ]);
         }
 

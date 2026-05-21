@@ -74,6 +74,13 @@ namespace NEdit.Editor
             var session = new EditorSession(DocumentBuffer.Load(fileName, options), options, console);
             session.MoveTo(Math.Max(0, startLine - 1), Math.Max(0, startColumn - 1));
 
+            if (fileName is not null)
+            {
+                string fullPath = Path.GetFullPath(fileName);
+                appSettings.RecentFiles.Remove(fullPath);
+                appSettings.RecentFiles.Add(fullPath);
+            }
+
             var catalog = EditorCommandCatalog.CreateDefault();
             var editor = new EditorLoop(session, new Renderer(console, catalog), catalog);
 

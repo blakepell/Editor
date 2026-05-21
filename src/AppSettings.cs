@@ -1,4 +1,5 @@
-﻿using NEdit.Editor;
+﻿using NEdit.Collections;
+using NEdit.Editor;
 using System.Text.Json.Serialization;
 
 namespace NEdit
@@ -34,6 +35,11 @@ namespace NEdit
         /// The options loaded from <c>~/.apexgate/nedit.json</c> on startup and saved on exit.
         /// </value>
         public EditorOptions Options { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets a buffer of recently used files.
+        /// </summary>
+        public CircularObservableCollection<string> RecentFiles { get; set; } = new(20);
     }
 
     /// <summary>

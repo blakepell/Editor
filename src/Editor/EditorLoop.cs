@@ -199,6 +199,10 @@ namespace NEdit.Editor
             {
                 NewDocument();
             }
+            else if (IsCtrlAlt(key, 'O'))
+            {
+                ShowRecentFiles();
+            }
             else if (IsCtrl(key, 'O'))
             {
                 OpenFile();
@@ -481,6 +485,7 @@ namespace NEdit.Editor
                     }
 
                     _session.OpenFile(selected.FilePath);
+                    TrackRecentFile(Path.GetFullPath(selected.FilePath));
                     _session.MoveTo(selected.LineNumber - 1, 0);
                     return;
                 }
@@ -765,6 +770,12 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseOpenRecentFiles)
+            {
+                ShowRecentFiles();
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 
@@ -834,6 +845,7 @@ namespace NEdit.Editor
                         }
 
                         _session.OpenFile(path);
+                        TrackRecentFile(path);
 
                         if (_appSettings.Options.OpenFileChangesWorkingDirectory)
                         {
@@ -1011,6 +1023,129 @@ namespace NEdit.Editor
             _session.SetStatus(
                 exitCode == 0 ? $"Run: {Path.GetFileName(filePath)}" : $"Run: {Path.GetFileName(filePath)} (exit {exitCode})",
                 alert: exitCode != 0);
+        }
+
+        private void TrackRecentFile(string path)
+        {
+            _appSettings.RecentFiles.Remove(path);
+            _appSettings.RecentFiles.Add(path);
+        }
+
+        private IReadOnlyList<string> GetRecentFilePaths(string filter)
+        {
+            IEnumerable<string> paths = _appSettings.RecentFiles.Reverse();
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                paths = paths.Where(p => p.Contains(filter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return paths.ToArray();
+        }
+
+        private void ShowRecentFiles()
+        {
+            _session.EndTypingGroup();
+            string query = string.Empty;
+            int cursor = 0;
+            int selectedIndex = 0;
+
+            while (true)
+            {
+                IReadOnlyList<string> paths = GetRecentFilePaths(query);
+                if (selectedIndex >= paths.Count)
+                {
+                    selectedIndex = Math.Max(0, paths.Count - 1);
+                }
+
+                _renderer.RenderRecentFiles(_session, query, cursor, paths, selectedIndex);
+                ConsoleKeyInfo key = _session.Console.ReadKey();
+
+                if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.Enter)
+                {
+                    if (paths.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    string path = paths[selectedIndex];
+                    if (!ConfirmSaveModifiedBuffer())
+                    {
+                        return;
+                    }
+
+                    _session.OpenFile(path);
+                    TrackRecentFile(path);
+
+                    if (_appSettings.Options.OpenFileChangesWorkingDirectory)
+                    {
+                        string? fileDir = Path.GetDirectoryName(path);
+                        if (!string.IsNullOrEmpty(fileDir))
+                        {
+                            Directory.SetCurrentDirectory(fileDir);
+                        }
+                    }
+
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.UpArrow)
+                {
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                }
+                else if (key.Key is ConsoleKey.DownArrow)
+                {
+                    selectedIndex = Math.Min(Math.Max(0, paths.Count - 1), selectedIndex + 1);
+                }
+                else if (key.Key is ConsoleKey.PageUp)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Max(0, selectedIndex - pageSize);
+                }
+                else if (key.Key is ConsoleKey.PageDown)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Min(Math.Max(0, paths.Count - 1), selectedIndex + pageSize);
+                }
+                else if (key.Key is ConsoleKey.Home)
+                {
+                    cursor = 0;
+                }
+                else if (key.Key is ConsoleKey.End)
+                {
+                    cursor = query.Length;
+                }
+                else if (key.Key is ConsoleKey.LeftArrow)
+                {
+                    cursor = Math.Max(0, cursor - 1);
+                }
+                else if (key.Key is ConsoleKey.RightArrow)
+                {
+                    cursor = Math.Min(query.Length, cursor + 1);
+                }
+                else if (key.Key is ConsoleKey.Backspace && cursor > 0)
+                {
+                    query = query.Remove(cursor - 1, 1);
+                    cursor--;
+                    selectedIndex = 0;
+                }
+                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                {
+                    query = query.Remove(cursor, 1);
+                    selectedIndex = 0;
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    cursor++;
+                    selectedIndex = 0;
+                }
+            }
         }
 
         private void RunMake(string? targets)

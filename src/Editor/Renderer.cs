@@ -525,6 +525,142 @@ namespace NEdit.Editor
         }
 
         /// <summary>
+        /// Renders the editor with the recent files panel overlay.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
+        /// <param name="query">The filter text as typed by the user.</param>
+        /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
+        /// <param name="paths">The recent file paths to display, most recent first.</param>
+        /// <param name="selectedIndex">The selected path index.</param>
+        public void RenderRecentFiles(
+            EditorSession session,
+            string query,
+            int queryCursor,
+            IReadOnlyList<string> paths,
+            int selectedIndex)
+        {
+            _console.BeginFrame();
+            _console.ShowCursor(false);
+            _console.UseBlockCursor();
+
+            TerminalSize size = _console.Size;
+            if (size != _lastSize)
+            {
+                _console.Clear();
+                _lastSize = size;
+            }
+
+            session.Layout = EditorLayout.From(size);
+            session.EnsureCursorVisible();
+
+            DrawTitle(session);
+            DrawEditor(session);
+            int inputColumn = DrawRecentFilesInput(session, query, queryCursor);
+            DrawShortcuts(session);
+            DrawRecentFilesPanel(session, paths, selectedIndex);
+            _console.MoveCursor(session.Layout.StatusRow, inputColumn);
+            _console.UseBlockCursor();
+            _console.ShowCursor(true);
+            _console.EndFrame();
+        }
+
+        private int DrawRecentFilesInput(EditorSession session, string query, int cursor)
+        {
+            int row = session.Layout.StatusRow;
+            int columns = session.Layout.Columns;
+            string prefix = "Recent: ";
+            int inputWidth = Math.Max(0, columns - prefix.Length);
+            int start = 0;
+            if (query.Length > inputWidth)
+            {
+                start = Math.Clamp(cursor - inputWidth + 1, 0, query.Length - inputWidth);
+            }
+
+            string visibleInput = inputWidth == 0
+                ? string.Empty
+                : query.Substring(start, Math.Min(inputWidth, query.Length - start));
+            string text = Fit(prefix + visibleInput, columns);
+            WritePadded(row, text, ConsoleStyle.Status);
+            return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
+        }
+
+        private void DrawRecentFilesPanel(EditorSession session, IReadOnlyList<string> paths, int selectedIndex)
+        {
+            int height = session.Layout.StatusRow - session.Layout.EditorTop;
+            int columns = session.Layout.Columns;
+            if (height < 3 || columns < 10)
+            {
+                return;
+            }
+
+            int width = Math.Min(columns, Math.Clamp(columns * 2 / 3, 40, 80));
+            int left = Math.Max(0, columns - width);
+            int top = session.Layout.EditorTop;
+            int bottom = top + height - 1;
+            int innerWidth = Math.Max(0, width - 2);
+
+            DrawPanelBorder(top, left, width, " Open Recent ");
+            for (int row = top + 1; row < bottom; row++)
+            {
+                _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
+                WritePadded(row, left + 1, ReadOnlySpan<char>.Empty, innerWidth, ConsoleStyle.Normal);
+                _console.WriteAt(row, left + width - 1, "|", ConsoleStyle.ShortcutKey);
+            }
+
+            _console.WriteAt(bottom, left, "+" + new string('-', Math.Max(0, width - 2)) + "+", ConsoleStyle.ShortcutKey);
+
+            int listTop = top + 1;
+            int listRows = Math.Max(0, bottom - listTop);
+            if (paths.Count == 0)
+            {
+                if (listRows > 0)
+                {
+                    _console.WriteAt(listTop, left + 1, Fit(" No recent files", innerWidth).PadRight(innerWidth), ConsoleStyle.Normal);
+                }
+
+                return;
+            }
+
+            int first = 0;
+            if (selectedIndex >= listRows)
+            {
+                first = selectedIndex - listRows + 1;
+            }
+
+            for (int i = 0; i < listRows && first + i < paths.Count; i++)
+            {
+                int pathIndex = first + i;
+                string path = paths[pathIndex];
+                bool selected = pathIndex == selectedIndex;
+                string marker = selected ? ">" : " ";
+                string fileName = Path.GetFileName(path);
+                string? dir = Path.GetDirectoryName(path);
+
+                ConsoleStyle nameStyle = selected ? ConsoleStyle.Selection : ConsoleStyle.Normal;
+                ConsoleStyle dirStyle = selected ? ConsoleStyle.Selection : ConsoleStyle.LineNumber;
+
+                int nameWidth = Math.Min(Math.Max(fileName.Length + 3, 20), (innerWidth * 2) / 5);
+                int dirWidth = innerWidth - nameWidth;
+
+                string nameLabel = Fit($"{marker}  {fileName}", nameWidth).PadRight(nameWidth);
+                _console.WriteAt(listTop + i, left + 1, nameLabel, nameStyle);
+
+                if (dirWidth > 2 && dir is not null)
+                {
+                    string dirText = dir.Length > dirWidth - 2
+                        ? ".." + dir[^Math.Max(1, dirWidth - 4)..]
+                        : dir;
+                    string dirLabel = Fit("  " + dirText, dirWidth).PadRight(dirWidth);
+                    _console.WriteAt(listTop + i, left + 1 + nameWidth, dirLabel, dirStyle);
+                }
+                else if (dirWidth > 0)
+                {
+                    WritePadded(listTop + i, left + 1 + nameWidth, ReadOnlySpan<char>.Empty, dirWidth, nameStyle);
+                }
+            }
+        }
+
+        /// <summary>
         /// Renders the editor with the grep search overlay.
         /// </summary>
         /// <param name="session">The editor session to render.</param>

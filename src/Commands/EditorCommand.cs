@@ -31,10 +31,11 @@ namespace NEdit.Commands
         /// <param name="useGrep"><see langword="true" /> to invoke the interactive grep search; otherwise, <see langword="false" />.</param>
         /// <param name="useRunFile"><see langword="true" /> to run the current file; otherwise, <see langword="false" />.</param>
         /// <param name="useMake"><see langword="true" /> to invoke the make workflow; otherwise, <see langword="false" />.</param>
+        /// <param name="useOpenRecentFiles"><see langword="true" /> to show the recent files panel; otherwise, <see langword="false" />.</param>
         /// <param name="showInStatusBar"><see langword="true" /> to display this command in the bottom shortcut bar; otherwise, <see langword="false" />.</param>
         /// <param name="sortOrder">The position order in the bottom shortcut bar. Lower values appear first.</param>
         /// <param name="shortLabel">The short label displayed in the bottom shortcut bar. When <see langword="null" />, the <paramref name="name" /> is used.</param>
-        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false, bool useSearch = false, bool useReplace = false, bool useSave = false, bool useExit = false, bool useGrep = false, bool useRunFile = false, bool useMake = false, bool showInStatusBar = false, int sortOrder = int.MaxValue, string? shortLabel = null)
+        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false, bool useSearch = false, bool useReplace = false, bool useSave = false, bool useExit = false, bool useGrep = false, bool useRunFile = false, bool useMake = false, bool useOpenRecentFiles = false, bool showInStatusBar = false, int sortOrder = int.MaxValue, string? shortLabel = null)
         {
             Name = name;
             Description = description;
@@ -51,6 +52,7 @@ namespace NEdit.Commands
             UseGrep = useGrep;
             UseRunFile = useRunFile;
             UseMake = useMake;
+            UseOpenRecentFiles = useOpenRecentFiles;
             ShowInStatusBar = showInStatusBar;
             SortOrder = sortOrder;
             ShortLabel = shortLabel;
@@ -175,6 +177,14 @@ namespace NEdit.Commands
         /// <see langword="true" /> if the make workflow should be invoked; otherwise, <see langword="false" />.
         /// </value>
         public bool UseMake { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command shows the recent files panel.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the recent files panel should be shown; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseOpenRecentFiles { get; }
 
         /// <summary>
         /// Gets a value that indicates whether this command is shown in the bottom shortcut bar.
