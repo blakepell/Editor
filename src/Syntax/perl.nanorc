@@ -1,5 +1,3 @@
-## Here is an example for Perl.
-##
 syntax "Perl" "\.p[lm]$"
 header "^#!.*/(env +)?perl( |$)"
 magic "Perl script"

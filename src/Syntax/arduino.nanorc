@@ -1,31 +1,3 @@
-
-## FILENAME:    arduino.nanorc
-##
-## DESCRIPTION: The arduino.nanorc syntax files allows syntax highlighting
-##              for Arduino sketch files in the GNU nano text editor.
-##
-## Maintainer:  Nicholas Wilde
-## Version:     0.1
-## DATE:        06/23/2011
-##
-## HOMEPAGE:    http://code.google.com/p/arduino-nano-editor-syntax/
-##
-## COMMENTS:    -Most of the code was taken from the c.nanorc code found with 
-##               GNU nano 2.2.6.
-##              -Direction was taken from the arduino vim syntax code by johannes
-##               <https://bitbucket.org/johannes/arduino-vim-syntax/>
-##              -Tested on Ubuntu Server 11.04 Natty Narwhal and GNU nano 2.2.6
-##
-## DIRECTIONS:  For Ubuntu Server 11.04 Natty Narwhal:
-##              -Move this file <arduino.nanorc> to the nano directory
-##               /usr/share/nano/
-##              -Add arduino.nanorc reference to the nanorc settings file
-##               /etc/nanorc
-##               ...
-##               ## Arduino
-##               /usr/share/nano/arduino.nanorc
-##               ...
-
 syntax "INO"  "\.?ino$"
 
 ## 

@@ -1,6 +1,3 @@
-## Nano syntax highlighting file for PowerShell
-## Written by Rashil Gandhi https://github.com/rashil2000
-
 syntax "PowerShell" "\.[pP][sS][1]$" "\.[pP][sS][mM][1]$"
 
 ## Commands
