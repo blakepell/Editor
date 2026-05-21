@@ -558,6 +558,134 @@ namespace NEdit.Editor
         }
 
         /// <summary>
+        /// Renders the editor with the bookmarks panel overlay.
+        /// </summary>
+        /// <param name="session">The editor session to render.</param>
+        /// <param name="query">The filter text as typed by the user.</param>
+        /// <param name="queryCursor">The cursor position within <paramref name="query" />.</param>
+        /// <param name="bookmarks">The bookmarks to display.</param>
+        /// <param name="selectedIndex">The selected bookmark index.</param>
+        public void RenderBookmarks(
+            EditorSession session,
+            string query,
+            int queryCursor,
+            IReadOnlyList<(int Key, Bookmark Bookmark)> bookmarks,
+            int selectedIndex)
+        {
+            _console.BeginFrame();
+            _console.ShowCursor(false);
+            _console.UseBlockCursor();
+
+            TerminalSize size = _console.Size;
+            if (size != _lastSize)
+            {
+                _console.Clear();
+                _lastSize = size;
+            }
+
+            session.Layout = EditorLayout.From(size);
+            session.EnsureCursorVisible();
+
+            DrawTitle(session);
+            DrawEditor(session);
+            int inputColumn = DrawBookmarksInput(session, query, queryCursor);
+            DrawShortcuts(session);
+            DrawBookmarksPanel(session, bookmarks, selectedIndex);
+            _console.MoveCursor(session.Layout.StatusRow, inputColumn);
+            _console.UseBlockCursor();
+            _console.ShowCursor(true);
+            _console.EndFrame();
+        }
+
+        private int DrawBookmarksInput(EditorSession session, string query, int cursor)
+        {
+            int row = session.Layout.StatusRow;
+            int columns = session.Layout.Columns;
+            string prefix = "Bookmarks: ";
+            int inputWidth = Math.Max(0, columns - prefix.Length);
+            int start = 0;
+            if (query.Length > inputWidth)
+            {
+                start = Math.Clamp(cursor - inputWidth + 1, 0, query.Length - inputWidth);
+            }
+
+            string visibleInput = inputWidth == 0
+                ? string.Empty
+                : query.Substring(start, Math.Min(inputWidth, query.Length - start));
+            string text = Fit(prefix + visibleInput, columns);
+            WritePadded(row, text, ConsoleStyle.Status);
+            return Math.Min(columns - 1, prefix.Length + Math.Clamp(cursor - start, 0, visibleInput.Length));
+        }
+
+        private void DrawBookmarksPanel(EditorSession session, IReadOnlyList<(int Key, Bookmark Bookmark)> bookmarks, int selectedIndex)
+        {
+            int height = session.Layout.StatusRow - session.Layout.EditorTop;
+            int columns = session.Layout.Columns;
+            if (height < 3 || columns < 10)
+            {
+                return;
+            }
+
+            int width = Math.Min(columns, Math.Clamp(columns * 2 / 3, 40, 80));
+            int left = Math.Max(0, columns - width);
+            int top = session.Layout.EditorTop;
+            int bottom = top + height - 1;
+            int innerWidth = Math.Max(0, width - 2);
+
+            DrawPanelBorder(top, left, width, " Bookmarks ");
+            for (int row = top + 1; row < bottom; row++)
+            {
+                _console.WriteAt(row, left, "|", ConsoleStyle.ShortcutKey);
+                WritePadded(row, left + 1, ReadOnlySpan<char>.Empty, innerWidth, ConsoleStyle.Normal);
+                _console.WriteAt(row, left + width - 1, "|", ConsoleStyle.ShortcutKey);
+            }
+
+            _console.WriteAt(bottom, left, "+" + new string('-', Math.Max(0, width - 2)) + "+", ConsoleStyle.ShortcutKey);
+
+            int listTop = top + 1;
+            int listRows = Math.Max(0, bottom - listTop);
+            if (bookmarks.Count == 0)
+            {
+                if (listRows > 0)
+                {
+                    _console.WriteAt(listTop, left + 1, Fit(" No bookmarks set", innerWidth).PadRight(innerWidth), ConsoleStyle.Normal);
+                }
+
+                return;
+            }
+
+            int first = 0;
+            if (selectedIndex >= listRows)
+            {
+                first = selectedIndex - listRows + 1;
+            }
+
+            int keyColWidth = Math.Min(12, innerWidth / 4);
+            int lineColWidth = 6;
+            int nameWidth = Math.Max(0, innerWidth - keyColWidth - lineColWidth);
+
+            for (int i = 0; i < listRows && first + i < bookmarks.Count; i++)
+            {
+                int bmIndex = first + i;
+                var (key, bm) = bookmarks[bmIndex];
+                bool selected = bmIndex == selectedIndex;
+
+                ConsoleStyle nameStyle = selected ? ConsoleStyle.Selection : ConsoleStyle.Normal;
+                ConsoleStyle dimStyle = selected ? ConsoleStyle.Selection : ConsoleStyle.LineNumber;
+
+                string marker = selected ? ">" : " ";
+                string keyLabel = Fit($"{marker} Ctrl+F{key}", keyColWidth).PadRight(keyColWidth);
+                string fileName = Path.GetFileName(bm.FilePath);
+                string nameLabel = Fit("  " + fileName, nameWidth).PadRight(nameWidth);
+                string lineLabel = Fit($":{bm.LineNumber + 1}", lineColWidth).PadRight(lineColWidth);
+
+                _console.WriteAt(listTop + i, left + 1, keyLabel, dimStyle);
+                _console.WriteAt(listTop + i, left + 1 + keyColWidth, nameLabel, nameStyle);
+                _console.WriteAt(listTop + i, left + 1 + keyColWidth + nameWidth, lineLabel, dimStyle);
+            }
+        }
+
+        /// <summary>
         /// Renders the editor with the recent files panel overlay.
         /// </summary>
         /// <param name="session">The editor session to render.</param>

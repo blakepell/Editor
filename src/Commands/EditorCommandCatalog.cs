@@ -410,7 +410,23 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null && appSettings.RecentFiles.Count > 0),
-                    useOpenRecentFiles: true)
+                    useOpenRecentFiles: true),
+                new EditorCommand(
+                    "Bookmarks",
+                    "Browse and navigate to a stored bookmark.",
+                    "Ctrl+B",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    alias: "bookmarks",
+                    useBookmarks: true),
+                new EditorCommand(
+                    "Clear Bookmarks",
+                    "Remove all stored bookmarks.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        _ => appSettings.Bookmarks.Clear(),
+                        context => context is not null && appSettings.Bookmarks.Count > 0))
             ]);
         }
 

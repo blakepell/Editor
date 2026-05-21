@@ -40,6 +40,14 @@ namespace NEdit
         /// Gets or sets a buffer of recently used files.
         /// </summary>
         public CircularObservableCollection<string> RecentFiles { get; set; } = new(20);
+
+        /// <summary>
+        /// Gets or sets the bookmarks indexed by F-key number (1–12).
+        /// </summary>
+        /// <value>
+        /// A dictionary mapping each F-key number to its stored <see cref="Bookmark"/>.
+        /// </value>
+        public Dictionary<int, Bookmark> Bookmarks { get; set; } = new();
     }
 
     /// <summary>

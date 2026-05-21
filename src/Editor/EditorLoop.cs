@@ -175,11 +175,19 @@ namespace NEdit.Editor
             {
                 RunCurrentFile();
             }
-            else if (IsCtrl(key, 'T'))
+            else if (key.Key is >= ConsoleKey.F1 and <= ConsoleKey.F12 && (key.Modifiers & ConsoleModifiers.Control) != 0)
             {
-                ShowCommandPalette();
+                SetBookmark((int)key.Key - (int)ConsoleKey.F1 + 1);
             }
-            else if (IsCtrl(key, 'M'))
+            else if (key.Key is >= ConsoleKey.F1 and <= ConsoleKey.F12 && (key.Modifiers & ConsoleModifiers.Shift) != 0)
+            {
+                GoToBookmark((int)key.Key - (int)ConsoleKey.F1 + 1);
+            }
+            else if (IsCtrl(key, 'B'))
+            {
+                ShowBookmarks();
+            }
+            else if (IsCtrl(key, 'T'))
             {
                 RunMake(null);
             }
@@ -776,6 +784,12 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseBookmarks)
+            {
+                ShowBookmarks();
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 
@@ -1111,6 +1125,190 @@ namespace NEdit.Editor
                 {
                     int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
                     selectedIndex = Math.Min(Math.Max(0, paths.Count - 1), selectedIndex + pageSize);
+                }
+                else if (key.Key is ConsoleKey.Home)
+                {
+                    cursor = 0;
+                }
+                else if (key.Key is ConsoleKey.End)
+                {
+                    cursor = query.Length;
+                }
+                else if (key.Key is ConsoleKey.LeftArrow)
+                {
+                    cursor = Math.Max(0, cursor - 1);
+                }
+                else if (key.Key is ConsoleKey.RightArrow)
+                {
+                    cursor = Math.Min(query.Length, cursor + 1);
+                }
+                else if (key.Key is ConsoleKey.Backspace && cursor > 0)
+                {
+                    query = query.Remove(cursor - 1, 1);
+                    cursor--;
+                    selectedIndex = 0;
+                }
+                else if (key.Key is ConsoleKey.Delete && cursor < query.Length)
+                {
+                    query = query.Remove(cursor, 1);
+                    selectedIndex = 0;
+                }
+                else if (!char.IsControl(key.KeyChar))
+                {
+                    query = query.Insert(cursor, key.KeyChar.ToString());
+                    cursor++;
+                    selectedIndex = 0;
+                }
+            }
+        }
+
+        private void SetBookmark(int n)
+        {
+            _session.EndTypingGroup();
+
+            string? filePath = _session.Document.FilePath;
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                _session.SetStatus($"Cannot set Ctrl+F{n}: file has not been saved yet.", alert: true);
+                return;
+            }
+
+            var bookmark = new Bookmark($"Ctrl+F{n}", Path.GetFullPath(filePath), _session.Cursor.Line);
+            _appSettings.Bookmarks[n] = bookmark;
+            _session.SetStatusSuccess($"Bookmark Ctrl+F{n} set — {Path.GetFileName(filePath)}, line {_session.Cursor.Line + 1}");
+        }
+
+        private void GoToBookmark(int n)
+        {
+            _session.EndTypingGroup();
+
+            if (!_appSettings.Bookmarks.TryGetValue(n, out Bookmark bookmark))
+            {
+                _session.SetStatus($"No bookmark set for Ctrl+F{n}.", alert: true);
+                return;
+            }
+
+            if (!File.Exists(bookmark.FilePath))
+            {
+                _session.SetStatus($"Bookmark Ctrl+F{n}: file not found — {bookmark.FilePath}", alert: true);
+                return;
+            }
+
+            if (!string.Equals(_session.Document.FilePath, bookmark.FilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!ConfirmSaveModifiedBuffer())
+                {
+                    return;
+                }
+
+                _session.OpenFile(bookmark.FilePath);
+                TrackRecentFile(bookmark.FilePath);
+            }
+
+            int line = Math.Clamp(bookmark.LineNumber, 0, Math.Max(0, _session.Document.LineCount - 1));
+            _session.MoveTo(line, 0);
+            _session.SetStatusSuccess($"Bookmark Ctrl+F{n} — {Path.GetFileName(bookmark.FilePath)}, line {line + 1}");
+        }
+
+        private IReadOnlyList<(int Key, Bookmark Bookmark)> GetFilteredBookmarks(string filter)
+        {
+            IEnumerable<KeyValuePair<int, Bookmark>> entries = _appSettings.Bookmarks
+                .OrderBy(kv => kv.Key);
+
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                entries = entries.Where(kv =>
+                    kv.Value.FilePath.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                    Path.GetFileName(kv.Value.FilePath).Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                    $"Ctrl+F{kv.Key}".Contains(filter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return entries.Select(kv => (kv.Key, kv.Value)).ToArray();
+        }
+
+        private void ShowBookmarks()
+        {
+            _session.EndTypingGroup();
+            string query = string.Empty;
+            int cursor = 0;
+            int selectedIndex = 0;
+
+            while (true)
+            {
+                IReadOnlyList<(int Key, Bookmark Bookmark)> bookmarks = GetFilteredBookmarks(query);
+                if (selectedIndex >= bookmarks.Count)
+                {
+                    selectedIndex = Math.Max(0, bookmarks.Count - 1);
+                }
+
+                _renderer.RenderBookmarks(_session, query, cursor, bookmarks, selectedIndex);
+                ConsoleKeyInfo key = _session.Console.ReadKey();
+
+                if (key.Key is ConsoleKey.Escape || IsCtrl(key, 'C'))
+                {
+                    _session.SetStatus("Cancelled");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.Enter)
+                {
+                    if (bookmarks.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var (_, bm) = bookmarks[selectedIndex];
+                    _session.SetStatus(string.Empty);
+
+                    if (!File.Exists(bm.FilePath))
+                    {
+                        _session.SetStatus($"File not found: {bm.FilePath}", alert: true);
+                        return;
+                    }
+
+                    if (!string.Equals(_session.Document.FilePath, bm.FilePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!ConfirmSaveModifiedBuffer())
+                        {
+                            return;
+                        }
+
+                        _session.OpenFile(bm.FilePath);
+                        TrackRecentFile(bm.FilePath);
+
+                        if (_appSettings.Options.OpenFileChangesWorkingDirectory)
+                        {
+                            string? fileDir = Path.GetDirectoryName(bm.FilePath);
+                            if (!string.IsNullOrEmpty(fileDir))
+                            {
+                                Directory.SetCurrentDirectory(fileDir);
+                            }
+                        }
+                    }
+
+                    int line = Math.Clamp(bm.LineNumber, 0, Math.Max(0, _session.Document.LineCount - 1));
+                    _session.MoveTo(line, 0);
+                    _session.SetStatusSuccess($"Navigated to {Path.GetFileName(bm.FilePath)}, line {line + 1}");
+                    return;
+                }
+
+                if (key.Key is ConsoleKey.UpArrow)
+                {
+                    selectedIndex = Math.Max(0, selectedIndex - 1);
+                }
+                else if (key.Key is ConsoleKey.DownArrow)
+                {
+                    selectedIndex = Math.Min(Math.Max(0, bookmarks.Count - 1), selectedIndex + 1);
+                }
+                else if (key.Key is ConsoleKey.PageUp)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Max(0, selectedIndex - pageSize);
+                }
+                else if (key.Key is ConsoleKey.PageDown)
+                {
+                    int pageSize = Math.Max(1, _session.Layout.StatusRow - _session.Layout.EditorTop - 2);
+                    selectedIndex = Math.Min(Math.Max(0, bookmarks.Count - 1), selectedIndex + pageSize);
                 }
                 else if (key.Key is ConsoleKey.Home)
                 {
