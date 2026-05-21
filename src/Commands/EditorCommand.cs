@@ -27,7 +27,13 @@ namespace NEdit.Commands
         /// <param name="useSearch"><see langword="true" /> to invoke the interactive find/search prompt; otherwise, <see langword="false" />.</param>
         /// <param name="useReplace"><see langword="true" /> to invoke the interactive find-and-replace prompt; otherwise, <see langword="false" />.</param>
         /// <param name="useSave"><see langword="true" /> to invoke the save workflow (prompting for a filename when needed); otherwise, <see langword="false" />.</param>
-        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false, bool useSearch = false, bool useReplace = false, bool useSave = false)
+        /// <param name="useExit"><see langword="true" /> to invoke the editor exit workflow; otherwise, <see langword="false" />.</param>
+        /// <param name="useGrep"><see langword="true" /> to invoke the interactive grep search; otherwise, <see langword="false" />.</param>
+        /// <param name="useRunFile"><see langword="true" /> to run the current file; otherwise, <see langword="false" />.</param>
+        /// <param name="showInStatusBar"><see langword="true" /> to display this command in the bottom shortcut bar; otherwise, <see langword="false" />.</param>
+        /// <param name="sortOrder">The position order in the bottom shortcut bar. Lower values appear first.</param>
+        /// <param name="shortLabel">The short label displayed in the bottom shortcut bar. When <see langword="null" />, the <paramref name="name" /> is used.</param>
+        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false, bool useSearch = false, bool useReplace = false, bool useSave = false, bool useExit = false, bool useGrep = false, bool useRunFile = false, bool showInStatusBar = false, int sortOrder = int.MaxValue, string? shortLabel = null)
         {
             Name = name;
             Description = description;
@@ -40,6 +46,12 @@ namespace NEdit.Commands
             UseSearch = useSearch;
             UseReplace = useReplace;
             UseSave = useSave;
+            UseExit = useExit;
+            UseGrep = useGrep;
+            UseRunFile = useRunFile;
+            ShowInStatusBar = showInStatusBar;
+            SortOrder = sortOrder;
+            ShortLabel = shortLabel;
         }
 
         /// <summary>
@@ -129,6 +141,54 @@ namespace NEdit.Commands
         /// <see langword="true" /> if the save workflow should be invoked; otherwise, <see langword="false" />.
         /// </value>
         public bool UseSave { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command invokes the editor exit workflow.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the exit workflow should be invoked; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseExit { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command invokes the interactive grep search.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the grep search should be shown; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseGrep { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command runs the current file.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the current file should be run; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseRunFile { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether this command is shown in the bottom shortcut bar.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the command appears in the shortcut bar; otherwise, <see langword="false" />.
+        /// </value>
+        public bool ShowInStatusBar { get; }
+
+        /// <summary>
+        /// Gets the position order used when laying out the bottom shortcut bar.
+        /// </summary>
+        /// <value>
+        /// A non-negative integer; lower values appear further left. Defaults to <see cref="int.MaxValue"/>.
+        /// </value>
+        public int SortOrder { get; }
+
+        /// <summary>
+        /// Gets the short label displayed in the bottom shortcut bar.
+        /// </summary>
+        /// <value>
+        /// The short label, or <see langword="null" /> when <see cref="Name" /> should be used instead.
+        /// </value>
+        public string? ShortLabel { get; }
 
         /// <summary>
         /// Determines whether the command can execute in the supplied context.

@@ -40,12 +40,13 @@ namespace NEdit.Editor
         /// </summary>
         /// <param name="session">The editor session to mutate.</param>
         /// <param name="renderer">The renderer used to update the terminal.</param>
-        public EditorLoop(EditorSession session, Renderer renderer)
+        /// <param name="commandCatalog">The command catalog shared with the renderer.</param>
+        public EditorLoop(EditorSession session, Renderer renderer, EditorCommandCatalog commandCatalog)
         {
             _session = session;
             _renderer = renderer;
             _appSettings = AppServices.GetRequiredService<AppSettings>();
-            _commandCatalog = EditorCommandCatalog.CreateDefault();
+            _commandCatalog = commandCatalog;
             _commandContext = new EditorCommandContext(_session);
         }
 
@@ -699,6 +700,24 @@ namespace NEdit.Editor
             if (command.UseSave)
             {
                 Save();
+                return;
+            }
+
+            if (command.UseExit)
+            {
+                Exit();
+                return;
+            }
+
+            if (command.UseGrep)
+            {
+                ShowGrepSearch();
+                return;
+            }
+
+            if (command.UseRunFile)
+            {
+                RunCurrentFile();
                 return;
             }
 

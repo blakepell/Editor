@@ -15,15 +15,18 @@ namespace NEdit.Editor
     {
         private static readonly string Spaces = new(' ', 256);
         private readonly IConsoleDriver _console;
+        private readonly EditorCommandCatalog _commandCatalog;
         private TerminalSize _lastSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Renderer"/> class.
         /// </summary>
         /// <param name="console">The console driver used for terminal output.</param>
-        public Renderer(IConsoleDriver console)
+        /// <param name="commandCatalog">The command catalog used to populate the shortcut bar.</param>
+        public Renderer(IConsoleDriver console, EditorCommandCatalog commandCatalog)
         {
             _console = console;
+            _commandCatalog = commandCatalog;
         }
 
         /// <summary>
@@ -270,20 +273,45 @@ namespace NEdit.Editor
 
         private void DrawShortcuts(EditorSession session)
         {
-            (string Key, string Text)[][] rows =
-            [
-                [("^T", "Commands"), ("^N", "New"), ("F5", "Run"), ("^X", "Exit"), ("^O", "Open"), ("^!S", "Save"), ("^F", "Find"), ("^H", "Replace")],
-                [("^K", "Cut"), ("^P", "Paste"), ("", ""), ("^C", "Copy"), ("^Z", "Undo"), ("^!Z", "Redo"), ("^G", "Grep"), ("^L", "Line #s")]
-            ];
+            var barCommands = _commandCatalog.Commands
+                .Where(c => c.ShowInStatusBar)
+                .OrderBy(c => c.SortOrder)
+                .ToList();
 
-            for (int i = 0; i < rows.Length; i++)
+            const int itemsPerRow = 8;
+            for (int rowIndex = 0; rowIndex * itemsPerRow < barCommands.Count; rowIndex++)
             {
-                int row = session.Layout.ShortcutTop + i;
-                if (row < session.Layout.Rows)
+                int row = session.Layout.ShortcutTop + rowIndex;
+                if (row >= session.Layout.Rows)
                 {
-                    DrawShortcutRow(row, rows[i]);
+                    break;
                 }
+
+                var rowItems = barCommands
+                    .Skip(rowIndex * itemsPerRow)
+                    .Take(itemsPerRow)
+                    .Select(c => (Key: ToShortKey(c.HotKey), Text: c.ShortLabel ?? c.Name))
+                    .ToArray();
+
+                DrawShortcutRow(row, rowItems);
             }
+        }
+
+        /// <summary>
+        /// Converts a full hotkey label such as "Ctrl+F" or "Ctrl+Alt+S" to the short nano-style
+        /// form used in the shortcut bar (e.g. "^F" or "^!S").
+        /// </summary>
+        private static string ToShortKey(string? hotKey)
+        {
+            if (hotKey is null)
+            {
+                return string.Empty;
+            }
+
+            return hotKey
+                .Replace("Ctrl+Alt+", "^!", StringComparison.Ordinal)
+                .Replace("Ctrl+", "^", StringComparison.Ordinal)
+                .Replace("Alt+", "!", StringComparison.Ordinal);
         }
 
         private void DrawShortcutRow(int row, (string Key, string Text)[] items)
@@ -389,9 +417,17 @@ namespace NEdit.Editor
                 bool enabled = command.CanExecute(context);
                 string prefix = selected ? "> " : "  ";
                 string disabled = enabled ? string.Empty : " [disabled]";
-                string label = prefix + command.Name + disabled;
+                string hotKeyLabel = command.HotKey is not null ? $"[{command.HotKey}]" : string.Empty;
+                int hotKeyLen = hotKeyLabel.Length;
+                int nameWidth = Math.Max(0, innerWidth - hotKeyLen);
+                string nameLabel = Fit(prefix + command.Name + disabled, nameWidth).PadRight(nameWidth);
                 ConsoleStyle style = selected ? ConsoleStyle.Selection : enabled ? ConsoleStyle.Normal : ConsoleStyle.LineNumber;
-                _console.WriteAt(listTop + i, left + 1, Fit(label, innerWidth).PadRight(innerWidth), style);
+                _console.WriteAt(listTop + i, left + 1, nameLabel, style);
+                if (hotKeyLen > 0 && nameWidth + hotKeyLen <= innerWidth)
+                {
+                    ConsoleStyle keyStyle = selected ? ConsoleStyle.Selection : ConsoleStyle.LineNumber;
+                    _console.WriteAt(listTop + i, left + 1 + nameWidth, hotKeyLabel, keyStyle);
+                }
             }
         }
 

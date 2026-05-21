@@ -4,6 +4,7 @@
  * @license  : MIT
  */
 
+using NEdit.Commands;
 using NEdit.Memory;
 using System.Text;
 
@@ -73,7 +74,8 @@ namespace NEdit.Editor
             var session = new EditorSession(DocumentBuffer.Load(fileName, options), options, console);
             session.MoveTo(Math.Max(0, startLine - 1), Math.Max(0, startColumn - 1));
 
-            var editor = new EditorLoop(session, new Renderer(console));
+            var catalog = EditorCommandCatalog.CreateDefault();
+            var editor = new EditorLoop(session, new Renderer(console, catalog), catalog);
 
             try
             {

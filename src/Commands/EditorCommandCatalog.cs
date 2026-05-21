@@ -153,7 +153,10 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null),
-                    useNewDocument: true),
+                    useNewDocument: true,
+                    showInStatusBar: true,
+                    sortOrder: 20,
+                    shortLabel: "New"),
                 new EditorCommand(
                     "Open File",
                     "Browse and open a file from the current directory.",
@@ -161,7 +164,10 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null),
-                    useFilePicker: true),
+                    useFilePicker: true,
+                    showInStatusBar: true,
+                    sortOrder: 50,
+                    shortLabel: "Open"),
                 new EditorCommand(
                     "Show Working Directory",
                     "Display the current working directory in the status bar.",
@@ -203,7 +209,10 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null),
-                    useSearch: true),
+                    useSearch: true,
+                    showInStatusBar: true,
+                    sortOrder: 70,
+                    shortLabel: "Find"),
                 new EditorCommand(
                     "Replace Text",
                     "Find and replace text throughout the document.",
@@ -211,7 +220,10 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context?.Session.IsReadOnly == false),
-                    useReplace: true),
+                    useReplace: true,
+                    showInStatusBar: true,
+                    sortOrder: 80,
+                    shortLabel: "Replace"),
                 new EditorCommand(
                     "Save File",
                     "Save the current document to disk.",
@@ -219,14 +231,20 @@ namespace NEdit.Commands
                     new RelayCommand<EditorCommandContext>(
                         _ => { },
                         context => context is not null),
-                    useSave: true),
+                    useSave: true,
+                    showInStatusBar: true,
+                    sortOrder: 60,
+                    shortLabel: "Save"),
                 new EditorCommand(
                     "Toggle Line Numbers",
                     "Show or hide line numbers in the editor.",
                     "Ctrl+L",
                     new RelayCommand<EditorCommandContext>(
                         context => context?.Session.ToggleLineNumbers(),
-                        context => context is not null)),
+                        context => context is not null),
+                    showInStatusBar: true,
+                    sortOrder: 150,
+                    shortLabel: "Line #s"),
                 new EditorCommand(
                     "Goto Line",
                     "Move the cursor to the specified line number.",
@@ -235,7 +253,100 @@ namespace NEdit.Commands
                         GotoLine,
                         context => context is not null),
                     alias: "goto",
-                    argumentPrompt: "Line")
+                    argumentPrompt: "Line"),
+                new EditorCommand(
+                    "Commands",
+                    "Open the command palette.",
+                    "Ctrl+T",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    showInStatusBar: true,
+                    sortOrder: 10,
+                    shortLabel: "Commands"),
+                new EditorCommand(
+                    "Run File",
+                    "Run the current file using the registered runner for its extension.",
+                    "F5",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useRunFile: true,
+                    showInStatusBar: true,
+                    sortOrder: 30,
+                    shortLabel: "Run"),
+                new EditorCommand(
+                    "Exit",
+                    "Exit the editor, prompting to save any unsaved changes.",
+                    "Ctrl+X",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useExit: true,
+                    showInStatusBar: true,
+                    sortOrder: 40,
+                    shortLabel: "Exit"),
+                new EditorCommand(
+                    "Cut",
+                    "Cut the selected text or the current line to the clipboard.",
+                    "Ctrl+K",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.Cut(),
+                        context => context?.Session.IsReadOnly == false),
+                    showInStatusBar: true,
+                    sortOrder: 90,
+                    shortLabel: "Cut"),
+                new EditorCommand(
+                    "Copy",
+                    "Copy the selected text or the current line to the clipboard.",
+                    "Ctrl+C",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.Copy(),
+                        context => context is not null),
+                    showInStatusBar: true,
+                    sortOrder: 110,
+                    shortLabel: "Copy"),
+                new EditorCommand(
+                    "Paste",
+                    "Paste the clipboard contents at the cursor.",
+                    "Ctrl+P",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.Paste(),
+                        context => context?.Session.IsReadOnly == false),
+                    showInStatusBar: true,
+                    sortOrder: 100,
+                    shortLabel: "Paste"),
+                new EditorCommand(
+                    "Undo",
+                    "Undo the last edit.",
+                    "Ctrl+Z",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.Undo(),
+                        context => context?.Session.IsReadOnly == false),
+                    showInStatusBar: true,
+                    sortOrder: 120,
+                    shortLabel: "Undo"),
+                new EditorCommand(
+                    "Redo",
+                    "Redo the last undone edit.",
+                    "Ctrl+Alt+Z",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.Redo(),
+                        context => context?.Session.IsReadOnly == false),
+                    showInStatusBar: true,
+                    sortOrder: 130,
+                    shortLabel: "Redo"),
+                new EditorCommand(
+                    "Grep",
+                    "Search across files in the current directory using grep.",
+                    "Ctrl+G",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useGrep: true,
+                    showInStatusBar: true,
+                    sortOrder: 140,
+                    shortLabel: "Grep")
             ]);
         }
 
