@@ -189,6 +189,10 @@ namespace NEdit.Editor
             }
             else if (IsCtrl(key, 'T'))
             {
+                ShowCommandPalette();
+            }
+            else if (IsCtrl(key, 'M'))
+            {
                 RunMake(null);
             }
             else if (IsCtrl(key, 'A'))

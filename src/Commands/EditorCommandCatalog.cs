@@ -419,7 +419,9 @@ namespace NEdit.Commands
                         _ => { },
                         context => context is not null),
                     alias: "bookmarks",
-                    useBookmarks: true),
+                    useBookmarks: true,
+                    showInStatusBar: true,
+                    shortLabel: "Bookmarks"),
                 new EditorCommand(
                     "Clear Bookmarks",
                     "Remove all stored bookmarks.",
