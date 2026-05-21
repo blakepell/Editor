@@ -1,6 +1,7 @@
 syntax "SQL" "\.sql$" "sqliterc$"
+comment "--"
 
-icolor cyan "\<(ALL|ASC|AS|ALTER|AND|ADD|AUTO_INCREMENT)\>"
+icolor cyan"\<(ALL|ASC|AS|ALTER|AND|ADD|AUTO_INCREMENT)\>"
 icolor cyan "\<(BETWEEN|BINARY|BOTH|BY|BOOLEAN)\>"
 icolor cyan "\<(CHANGE|CHECK|COLUMNS|COLUMN|CROSS|CREATE)\>"
 icolor cyan "\<(DATABASES|DATABASE|DATA|DELAYED|DESCRIBE|DESC|DISTINCT|DELETE|DROP|DEFAULT)\>"

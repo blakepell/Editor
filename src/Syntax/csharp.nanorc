@@ -1,4 +1,5 @@
 syntax "C#" "\.cs$"
+comment "//"
 
 # Class
 color brightcyan  "class +[A-Za-z0-9]+ *((:) +[A-Za-z0-9.]+)?"

@@ -124,6 +124,23 @@ namespace NEdit.Editor
         /// The parsed syntax rules.
         /// </value>
         public List<SyntaxRule> Rules { get; } = [];
+
+        /// <summary>
+        /// Gets or sets the comment prefix token (e.g., <c>//</c>, <c>#</c>, or <c>&lt;!--</c>).
+        /// </summary>
+        /// <value>
+        /// The opening comment token, or <see langword="null" /> when no comment style is defined.
+        /// </value>
+        public string? CommentPrefix { get; set; }
+
+        /// <summary>
+        /// Gets or sets the block comment close token (e.g., <c>--&gt;</c>).
+        /// When set, <see cref="CommentPrefix"/> is the open token and this is the matching close token.
+        /// </summary>
+        /// <value>
+        /// The closing comment token, or <see langword="null" /> for line-comment style.
+        /// </value>
+        public string? CommentSuffix { get; set; }
     }
 
     /// <summary>
@@ -436,6 +453,16 @@ namespace NEdit.Editor
         }
 
         /// <summary>
+        /// Gets the line comment prefix for the active syntax (e.g., <c>//</c>, <c>#</c>, or <c>&lt;!--</c>).
+        /// </summary>
+        public string? CommentPrefix => _syntax?.CommentPrefix;
+
+        /// <summary>
+        /// Gets the block comment close token (e.g., <c>--&gt;</c>); when set, <see cref="CommentPrefix"/> is the open token.
+        /// </summary>
+        public string? CommentSuffix => _syntax?.CommentSuffix;
+
+        /// <summary>
         /// Highlights a single document line.
         /// </summary>
         /// <param name="document">The document to highlight.</param>
@@ -727,6 +754,23 @@ namespace NEdit.Editor
                     if (rule.Patterns.Count > 0 || rule.IsMultiline)
                     {
                         definition.Rules.Add(rule);
+                    }
+                }
+                else if (definition is not null && line.StartsWith("comment ", StringComparison.Ordinal))
+                {
+                    List<string> tokens = ParseValues(line["comment ".Length..]);
+                    if (tokens.Count > 0)
+                    {
+                        int pipeIndex = tokens[0].IndexOf('|');
+                        if (pipeIndex >= 0)
+                        {
+                            definition.CommentPrefix = tokens[0][..pipeIndex];
+                            definition.CommentSuffix = tokens[0][(pipeIndex + 1)..];
+                        }
+                        else
+                        {
+                            definition.CommentPrefix = tokens[0];
+                        }
                     }
                 }
             }

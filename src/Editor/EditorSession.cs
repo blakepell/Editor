@@ -206,6 +206,15 @@ namespace NEdit.Editor
         public IReadOnlyList<HighlightSpan> GetHighlightSpans(int lineIndex) => _highlighter.Highlight(Document, lineIndex);
 
         /// <summary>
+        /// Gets the comment prefix and suffix tokens for the active syntax.
+        /// </summary>
+        /// <value>
+        /// The prefix (e.g., <c>//</c>) and optional suffix (e.g., <c>--&gt;</c>), or <see langword="null" /> when
+        /// no comment style is defined for the current file type.
+        /// </value>
+        public (string? Prefix, string? Suffix) CommentTokens => (_highlighter.CommentPrefix, _highlighter.CommentSuffix);
+
+        /// <summary>
         /// Gets syntax highlight spans for a range of lines.
         /// </summary>
         /// <param name="firstLine">The first zero-based line index.</param>
@@ -506,6 +515,126 @@ namespace NEdit.Editor
                 Selection = savedSelection is { } mark ? new Position(mark.Line + 1, mark.Column) : null;
             });
         }
+
+        /// <summary>
+        /// Comments out the current line or all lines spanned by the active selection using the
+        /// syntax-defined comment token. For block-comment languages (e.g., HTML) the selection
+        /// is wrapped in open/close tokens; for line-comment languages each line is prefixed.
+        /// </summary>
+        public void CommentLines()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            var (prefix, suffix) = CommentTokens;
+            if (prefix is null)
+            {
+                SetStatus("No comment style defined for this file type", alert: true);
+                return;
+            }
+
+            (int first, int last) = GetLineMoveRange();
+
+            WithUndo(() =>
+            {
+                if (suffix is not null)
+                {
+                    // Block comment: append close token to last line, prepend open token to first line.
+                    Document.LineAt(last).Insert(Document.LineAt(last).Length, suffix);
+                    Document.LineAt(first).Insert(0, prefix);
+                }
+                else
+                {
+                    for (int i = first; i <= last; i++)
+                    {
+                        Document.LineAt(i).Insert(0, prefix);
+                    }
+                }
+            });
+
+            int count = last - first + 1;
+            SetStatusSuccess($"Commented {count} line{(count == 1 ? string.Empty : "s")}");
+        }
+
+        /// <summary>
+        /// Removes comment tokens from the current line or all lines spanned by the active selection.
+        /// </summary>
+        public void UncommentLines()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            var (prefix, suffix) = CommentTokens;
+            if (prefix is null)
+            {
+                SetStatus("No comment style defined for this file type", alert: true);
+                return;
+            }
+
+            (int first, int last) = GetLineMoveRange();
+
+            if (suffix is not null)
+            {
+                string firstLine = Document.LineAt(first).ToString();
+                string lastLine = Document.LineAt(last).ToString();
+
+                if (!firstLine.StartsWith(prefix, StringComparison.Ordinal) ||
+                    !lastLine.EndsWith(suffix, StringComparison.Ordinal))
+                {
+                    SetStatus("Selection is not block-commented", alert: true);
+                    return;
+                }
+
+                WithUndo(() =>
+                {
+                    Document.LineAt(last).Remove(Document.LineAt(last).Length - suffix.Length, suffix.Length);
+                    Document.LineAt(first).Remove(0, prefix.Length);
+                });
+
+                int count = last - first + 1;
+                SetStatusSuccess($"Uncommented {count} line{(count == 1 ? string.Empty : "s")}");
+            }
+            else
+            {
+                int removed = 0;
+
+                WithUndo(() =>
+                {
+                    for (int i = first; i <= last; i++)
+                    {
+                        string lineText = Document.LineAt(i).ToString();
+                        int tokenStart = 0;
+                        while (tokenStart < lineText.Length && char.IsWhiteSpace(lineText[tokenStart]))
+                        {
+                            tokenStart++;
+                        }
+
+                        if (tokenStart < lineText.Length &&
+                            lineText[tokenStart..].StartsWith(prefix, StringComparison.Ordinal))
+                        {
+                            Document.LineAt(i).Remove(tokenStart, prefix.Length);
+                            removed++;
+                        }
+                    }
+                });
+
+                if (removed == 0)
+                {
+                    SetStatus("No commented lines in selection", alert: true);
+                }
+                else
+                {
+                    SetStatusSuccess($"Uncommented {removed} line{(removed == 1 ? string.Empty : "s")}");
+                }
+            }
+        }
+
 
         private (int First, int Last) GetLineMoveRange()
         {

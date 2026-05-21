@@ -346,7 +346,21 @@ namespace NEdit.Commands
                     useGrep: true,
                     showInStatusBar: true,
                     sortOrder: 140,
-                    shortLabel: "Grep")
+                    shortLabel: "Grep"),
+                new EditorCommand(
+                    "Comment Code",
+                    "Comment the current line or selected lines using the syntax-defined comment token.",
+                    "Ctrl+K Ctrl+C",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.CommentLines(),
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Uncomment Code",
+                    "Uncomment the current line or selected lines by removing the syntax-defined comment token.",
+                    "Ctrl+K Ctrl+U",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.UncommentLines(),
+                        context => context?.Session.IsReadOnly == false))
             ]);
         }
 

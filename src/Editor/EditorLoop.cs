@@ -34,6 +34,7 @@ namespace NEdit.Editor
         private readonly AppSettings _appSettings;
         private readonly EditorCommandCatalog _commandCatalog;
         private readonly EditorCommandContext _commandContext;
+        private ConsoleKeyInfo? _chordPrefix;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EditorLoop"/> class.
@@ -89,6 +90,15 @@ namespace NEdit.Editor
 
         private void HandleKey(ConsoleKeyInfo key)
         {
+            if (_chordPrefix.HasValue)
+            {
+                ConsoleKeyInfo leader = _chordPrefix.Value;
+                _chordPrefix = null;
+                _session.ClearStatus();
+                HandleChordKey(leader, key);
+                return;
+            }
+
             _session.ClearStatus();
 
             if (IsCtrlKey(key, ConsoleKey.Home))
@@ -211,7 +221,8 @@ namespace NEdit.Editor
             }
             else if (IsCtrl(key, 'K'))
             {
-                _session.Cut();
+                _chordPrefix = key;
+                _session.SetStatus("^K-");
             }
             else if (IsCtrl(key, 'P'))
             {
@@ -248,6 +259,29 @@ namespace NEdit.Editor
             else if (!char.IsControl(key.KeyChar))
             {
                 _session.InsertPrintable(key.KeyChar);
+            }
+        }
+
+        private void HandleChordKey(ConsoleKeyInfo leader, ConsoleKeyInfo key)
+        {
+            if (IsCtrl(leader, 'K'))
+            {
+                if (IsCtrl(key, 'C'))
+                {
+                    _session.CommentLines();
+                }
+                else if (IsCtrl(key, 'U'))
+                {
+                    _session.UncommentLines();
+                }
+                else if (IsCtrl(key, 'K'))
+                {
+                    _session.Cut();
+                }
+                else
+                {
+                    _session.SetStatus("Unknown chord sequence", alert: true);
+                }
             }
         }
 
