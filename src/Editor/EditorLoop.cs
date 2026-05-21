@@ -108,11 +108,25 @@ namespace NEdit.Editor
             }
             else if (key.Key is ConsoleKey.UpArrow)
             {
-                _session.MoveUp(IsShift(key));
+                if (IsCtrlKey(key, ConsoleKey.UpArrow))
+                {
+                    _session.MoveLineUp();
+                }
+                else
+                {
+                    _session.MoveUp(IsShift(key));
+                }
             }
             else if (key.Key is ConsoleKey.DownArrow)
             {
-                _session.MoveDown(IsShift(key));
+                if (IsCtrlKey(key, ConsoleKey.DownArrow))
+                {
+                    _session.MoveLineDown();
+                }
+                else
+                {
+                    _session.MoveDown(IsShift(key));
+                }
             }
             else if (key.Key is ConsoleKey.PageUp)
             {

@@ -446,6 +446,82 @@ namespace NEdit.Editor
         }
 
         /// <summary>
+        /// Moves the current line, or all lines spanned by the active selection, up by one line.
+        /// </summary>
+        public void MoveLineUp()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            (int first, int last) = GetLineMoveRange();
+            if (first == 0)
+            {
+                return;
+            }
+
+            Position savedCursor = Cursor;
+            Position? savedSelection = Selection;
+
+            WithUndo(() =>
+            {
+                LineBuffer above = Document.Lines[first - 1];
+                Document.Lines.RemoveAt(first - 1);
+                Document.Lines.Insert(last, above);
+
+                Cursor = new Position(savedCursor.Line - 1, savedCursor.Column);
+                Selection = savedSelection is { } mark ? new Position(mark.Line - 1, mark.Column) : null;
+            });
+        }
+
+        /// <summary>
+        /// Moves the current line, or all lines spanned by the active selection, down by one line.
+        /// </summary>
+        public void MoveLineDown()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            (int first, int last) = GetLineMoveRange();
+            if (last >= Document.LineCount - 1)
+            {
+                return;
+            }
+
+            Position savedCursor = Cursor;
+            Position? savedSelection = Selection;
+
+            WithUndo(() =>
+            {
+                LineBuffer below = Document.Lines[last + 1];
+                Document.Lines.RemoveAt(last + 1);
+                Document.Lines.Insert(first, below);
+
+                Cursor = new Position(savedCursor.Line + 1, savedCursor.Column);
+                Selection = savedSelection is { } mark ? new Position(mark.Line + 1, mark.Column) : null;
+            });
+        }
+
+        private (int First, int Last) GetLineMoveRange()
+        {
+            if (SelectionRange is { } range)
+            {
+                int first = range.Start.Line;
+                int last = range.End.Column == 0 && range.End.Line > first
+                    ? range.End.Line - 1
+                    : range.End.Line;
+                return (first, last);
+            }
+
+            return (Cursor.Line, Cursor.Line);
+        }
+
+        /// <summary>
         /// Inserts a printable character at the cursor.
         /// </summary>
         /// <param name="value">The character to insert.</param>
