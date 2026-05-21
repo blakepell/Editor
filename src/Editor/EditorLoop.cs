@@ -179,6 +179,10 @@ namespace NEdit.Editor
             {
                 ShowCommandPalette();
             }
+            else if (IsCtrl(key, 'M'))
+            {
+                RunMake(null);
+            }
             else if (IsCtrl(key, 'A'))
             {
                 _session.SelectAll();
@@ -755,6 +759,12 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseMake)
+            {
+                RunMake(_commandCatalog.ParseAliasArgument(command, query));
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 
@@ -1001,6 +1011,74 @@ namespace NEdit.Editor
             _session.SetStatus(
                 exitCode == 0 ? $"Run: {Path.GetFileName(filePath)}" : $"Run: {Path.GetFileName(filePath)} (exit {exitCode})",
                 alert: exitCode != 0);
+        }
+
+        private void RunMake(string? targets)
+        {
+            _session.EndTypingGroup();
+
+            if (!EditorCommandCatalog.MakefileExists())
+            {
+                _session.SetStatus("No makefile found in the current directory.", alert: true);
+                return;
+            }
+
+            string args = string.IsNullOrWhiteSpace(targets) ? string.Empty : targets.Trim();
+            string command = string.IsNullOrWhiteSpace(args) ? "make" : $"make {args}";
+
+            _session.Console.LeaveEditorMode();
+
+            int exitCode = -1;
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    UseShellExecute = false,
+                    WorkingDirectory = Directory.GetCurrentDirectory()
+                };
+
+                if (OperatingSystem.IsWindows())
+                {
+                    psi.FileName = "cmd.exe";
+                    psi.Arguments = "/c " + command;
+                }
+                else
+                {
+                    psi.FileName = "/bin/sh";
+                    psi.Arguments = "-c " + command;
+                }
+
+                using Process? process = Process.Start(psi);
+                if (process is not null)
+                {
+                    process.WaitForExit();
+                    exitCode = process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+
+            Console.WriteLine();
+            Console.Write(exitCode == 0
+                ? "Make succeeded (exit 0). Press any key to return to editor..."
+                : $"Make failed (exit {exitCode}). Press any key to return to editor...");
+            Console.ReadKey(intercept: true);
+
+            _session.Console.EnterEditorMode();
+
+            if (exitCode == 0)
+            {
+                _session.SetStatusSuccess(string.IsNullOrWhiteSpace(args) ? "Make: succeeded" : $"Make {args}: succeeded");
+            }
+            else
+            {
+                _session.SetStatus(
+                    string.IsNullOrWhiteSpace(args) ? $"Make: failed (exit {exitCode})" : $"Make {args}: failed (exit {exitCode})",
+                    alert: true);
+            }
         }
 
         private string? Prompt(string label, string initial, bool allowEmpty)

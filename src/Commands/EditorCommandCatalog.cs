@@ -23,6 +23,15 @@ namespace NEdit.Commands
             Timeout = TimeSpan.FromSeconds(30)
         };
 
+        /// <summary>
+        /// Common makefile names recognized by this editor, checked in order.
+        /// </summary>
+        private static readonly string[] MakefileNames =
+        [
+            "Makefile", "makefile", "GNUmakefile", "GNUMakefile",
+            "nmakefile", "NMakefile", "MAKEFILE"
+        ];
+
         private readonly List<EditorCommand> _commands;
 
         private EditorCommandCatalog(List<EditorCommand> commands)
@@ -276,6 +285,15 @@ namespace NEdit.Commands
                     sortOrder: 30,
                     shortLabel: "Run"),
                 new EditorCommand(
+                    "Make",
+                    "Run make in the current working directory.",
+                    "Ctrl+M",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null && MakefileExists()),
+                    alias: "make",
+                    useMake: true),
+                new EditorCommand(
                     "Exit",
                     "Exit the editor, prompting to save any unsaved changes.",
                     "Ctrl+X",
@@ -362,6 +380,18 @@ namespace NEdit.Commands
                         context => context?.Session.UncommentLines(),
                         context => context?.Session.IsReadOnly == false))
             ]);
+        }
+
+        /// <summary>
+        /// Determines whether a makefile exists in the current working directory.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true" /> if a recognized makefile name is found; otherwise, <see langword="false" />.
+        /// </returns>
+        internal static bool MakefileExists()
+        {
+            string cwd = Directory.GetCurrentDirectory();
+            return MakefileNames.Any(name => File.Exists(Path.Combine(cwd, name)));
         }
 
         /// <summary>
