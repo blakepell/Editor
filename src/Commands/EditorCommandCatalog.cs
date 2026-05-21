@@ -27,7 +27,7 @@ namespace NEdit.Commands
 
         private EditorCommandCatalog(List<EditorCommand> commands)
         {
-            _commands = commands;
+            _commands = [.. commands.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)];
         }
 
         /// <summary>
@@ -103,6 +103,20 @@ namespace NEdit.Commands
                     null,
                     new RelayCommand<EditorCommandContext>(
                         ConvertSelectionFromBase64,
+                        context => context is not null)),
+                new EditorCommand(
+                    "URL Encode Selection",
+                    "Percent-encode the selected text for use in a URL.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        UrlEncodeSelection,
+                        context => context is not null)),
+                new EditorCommand(
+                    "URL Decode Selection",
+                    "Decode percent-encoded characters in the selected text.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        UrlDecodeSelection,
                         context => context is not null)),
                 new EditorCommand(
                     "Insert GUID",
@@ -182,6 +196,37 @@ namespace NEdit.Commands
                         context => context?.Session.IsReadOnly == false),
                     alias: "url",
                     argumentPrompt: "URL"),
+                new EditorCommand(
+                    "Find Text",
+                    "Search for text in the document.",
+                    "Ctrl+F",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useSearch: true),
+                new EditorCommand(
+                    "Replace Text",
+                    "Find and replace text throughout the document.",
+                    "Ctrl+H",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context?.Session.IsReadOnly == false),
+                    useReplace: true),
+                new EditorCommand(
+                    "Save File",
+                    "Save the current document to disk.",
+                    "Ctrl+Alt+S",
+                    new RelayCommand<EditorCommandContext>(
+                        _ => { },
+                        context => context is not null),
+                    useSave: true),
+                new EditorCommand(
+                    "Toggle Line Numbers",
+                    "Show or hide line numbers in the editor.",
+                    "Ctrl+L",
+                    new RelayCommand<EditorCommandContext>(
+                        context => context?.Session.ToggleLineNumbers(),
+                        context => context is not null)),
                 new EditorCommand(
                     "Goto Line",
                     "Move the cursor to the specified line number.",
@@ -299,6 +344,49 @@ namespace NEdit.Commands
             catch (FormatException)
             {
                 context.Session.SetStatus("Selected text is not valid Base64", alert: true);
+            }
+        }
+
+        private static void UrlEncodeSelection(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? selectedText = context.GetSelectedText();
+            if (selectedText is null)
+            {
+                context.Session.SetStatus("Select text first", alert: true);
+                return;
+            }
+
+            string encoded = Uri.EscapeDataString(selectedText);
+            context.ReplaceSelection(encoded, "URL encoded selection");
+        }
+
+        private static void UrlDecodeSelection(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string? selectedText = context.GetSelectedText();
+            if (selectedText is null)
+            {
+                context.Session.SetStatus("Select text first", alert: true);
+                return;
+            }
+
+            try
+            {
+                string decoded = Uri.UnescapeDataString(selectedText);
+                context.ReplaceSelection(decoded, "URL decoded selection");
+            }
+            catch (UriFormatException)
+            {
+                context.Session.SetStatus("Selected text is not valid URL-encoded text", alert: true);
             }
         }
 

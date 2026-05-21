@@ -670,6 +670,24 @@ namespace NEdit.Editor
                 return;
             }
 
+            if (command.UseSearch)
+            {
+                Search();
+                return;
+            }
+
+            if (command.UseReplace)
+            {
+                Replace();
+                return;
+            }
+
+            if (command.UseSave)
+            {
+                Save();
+                return;
+            }
+
             // Extract the argument provided inline via alias (e.g. "cd c:\temp" → "c:\temp").
             string? argument = _commandCatalog.ParseAliasArgument(command, query);
 

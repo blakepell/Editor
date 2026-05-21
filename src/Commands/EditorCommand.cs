@@ -24,7 +24,10 @@ namespace NEdit.Commands
         /// <param name="argumentPrompt">The optional prompt label used when an argument is required.</param>
         /// <param name="useFilePicker"><see langword="true" /> to open the file picker before command execution; otherwise, <see langword="false" />.</param>
         /// <param name="useNewDocument"><see langword="true" /> to start a new document before command execution; otherwise, <see langword="false" />.</param>
-        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false)
+        /// <param name="useSearch"><see langword="true" /> to invoke the interactive find/search prompt; otherwise, <see langword="false" />.</param>
+        /// <param name="useReplace"><see langword="true" /> to invoke the interactive find-and-replace prompt; otherwise, <see langword="false" />.</param>
+        /// <param name="useSave"><see langword="true" /> to invoke the save workflow (prompting for a filename when needed); otherwise, <see langword="false" />.</param>
+        public EditorCommand(string name, string description, string? hotKey, ICommand command, string? alias = null, string? argumentPrompt = null, bool useFilePicker = false, bool useNewDocument = false, bool useSearch = false, bool useReplace = false, bool useSave = false)
         {
             Name = name;
             Description = description;
@@ -34,6 +37,9 @@ namespace NEdit.Commands
             ArgumentPrompt = argumentPrompt;
             UseFilePicker = useFilePicker;
             UseNewDocument = useNewDocument;
+            UseSearch = useSearch;
+            UseReplace = useReplace;
+            UseSave = useSave;
         }
 
         /// <summary>
@@ -99,6 +105,30 @@ namespace NEdit.Commands
         /// <see langword="true" /> if a new document should be started; otherwise, <see langword="false" />.
         /// </value>
         public bool UseNewDocument { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command invokes the interactive find/search prompt.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the search prompt should be shown; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseSearch { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command invokes the interactive find-and-replace prompt.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the replace prompt should be shown; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseReplace { get; }
+
+        /// <summary>
+        /// Gets a value that indicates whether the command invokes the save workflow.
+        /// </summary>
+        /// <value>
+        /// <see langword="true" /> if the save workflow should be invoked; otherwise, <see langword="false" />.
+        /// </value>
+        public bool UseSave { get; }
 
         /// <summary>
         /// Determines whether the command can execute in the supplied context.
