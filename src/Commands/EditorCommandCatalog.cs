@@ -7,6 +7,7 @@
 using CommunityToolkit.Mvvm.Input;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 
 namespace NEdit.Commands
 {
@@ -378,7 +379,28 @@ namespace NEdit.Commands
                     "Ctrl+K Ctrl+U",
                     new RelayCommand<EditorCommandContext>(
                         context => context?.Session.UncommentLines(),
-                        context => context?.Session.IsReadOnly == false))
+                        context => context?.Session.IsReadOnly == false)),
+                new EditorCommand(
+                    "Compress JSON",
+                    "Minify the document or selected JSON by removing all unnecessary whitespace.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        CompressJson,
+                        context => context?.Session.IsReadOnly == false && IsJsonContext(context))),
+                new EditorCommand(
+                    "Format JSON",
+                    "Prettify the document or selected JSON with indentation for readability.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        FormatJson,
+                        context => context?.Session.IsReadOnly == false && IsJsonContext(context))),
+                new EditorCommand(
+                    "Validate JSON",
+                    "Check whether the document or selected text is valid JSON.",
+                    null,
+                    new RelayCommand<EditorCommandContext>(
+                        ValidateJson,
+                        context => IsJsonContext(context)))
             ]);
         }
 
@@ -542,6 +564,152 @@ namespace NEdit.Commands
             catch (UriFormatException)
             {
                 context.Session.SetStatus("Selected text is not valid URL-encoded text", alert: true);
+            }
+        }
+
+        private static readonly JsonWriterOptions _jsonIndentedWriterOptions = new() { Indented = true };
+
+        private static bool IsJsonContext(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return false;
+            }
+
+            string? path = context.Session.Document.FilePath;
+            if (path is not null && Path.GetExtension(path).Equals(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return context.HasSelectedText;
+        }
+
+        private static void CompressJson(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            bool hadSelection = context.HasSelectedText;
+            if (!hadSelection)
+            {
+                context.Session.SelectAll();
+            }
+
+            string? input = context.GetSelectedText();
+            if (string.IsNullOrEmpty(input))
+            {
+                if (!hadSelection)
+                {
+                    context.Session.ClearSelection();
+                }
+
+                context.Session.SetStatus("No content to compress.", alert: true);
+                return;
+            }
+
+            try
+            {
+                using JsonDocument jsonDoc = JsonDocument.Parse(input);
+                using var ms = new MemoryStream();
+                using var writer = new Utf8JsonWriter(ms);
+                jsonDoc.RootElement.WriteTo(writer);
+                writer.Flush();
+                string result = Encoding.UTF8.GetString(ms.ToArray());
+                context.ReplaceSelection(result, hadSelection ? "Compressed JSON selection" : "Compressed JSON");
+            }
+            catch (JsonException ex)
+            {
+                if (!hadSelection)
+                {
+                    context.Session.ClearSelection();
+                }
+
+                context.Session.SetStatus($"Invalid JSON: {ex.Message}", alert: true);
+            }
+        }
+
+        private static void FormatJson(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            bool hadSelection = context.HasSelectedText;
+            if (!hadSelection)
+            {
+                context.Session.SelectAll();
+            }
+
+            string? input = context.GetSelectedText();
+            if (string.IsNullOrEmpty(input))
+            {
+                if (!hadSelection)
+                {
+                    context.Session.ClearSelection();
+                }
+
+                context.Session.SetStatus("No content to format.", alert: true);
+                return;
+            }
+
+            try
+            {
+                using JsonDocument jsonDoc = JsonDocument.Parse(input);
+                using var ms = new MemoryStream();
+                using var writer = new Utf8JsonWriter(ms, _jsonIndentedWriterOptions);
+                jsonDoc.RootElement.WriteTo(writer);
+                writer.Flush();
+                string result = Encoding.UTF8.GetString(ms.ToArray());
+                context.ReplaceSelection(result, hadSelection ? "Formatted JSON selection" : "Formatted JSON");
+            }
+            catch (JsonException ex)
+            {
+                if (!hadSelection)
+                {
+                    context.Session.ClearSelection();
+                }
+
+                context.Session.SetStatus($"Invalid JSON: {ex.Message}", alert: true);
+            }
+        }
+
+        private static void ValidateJson(EditorCommandContext? context)
+        {
+            if (context is null)
+            {
+                return;
+            }
+
+            string input;
+            bool hasSelection = context.HasSelectedText;
+
+            if (hasSelection)
+            {
+                input = context.GetSelectedText() ?? string.Empty;
+            }
+            else
+            {
+                input = string.Join("\n", context.Session.Document.Lines.Select(l => l.ToString()));
+            }
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                context.Session.SetStatus("No content to validate.", alert: true);
+                return;
+            }
+
+            try
+            {
+                using JsonDocument _ = JsonDocument.Parse(input);
+                context.Session.SetStatusSuccess(hasSelection ? "Selection is valid JSON" : "Document is valid JSON");
+            }
+            catch (JsonException ex)
+            {
+                context.Session.SetStatus($"Invalid JSON: {ex.Message}", alert: true);
             }
         }
 
