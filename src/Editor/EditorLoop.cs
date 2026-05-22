@@ -167,6 +167,10 @@ namespace NEdit.Editor
             {
                 _session.Enter();
             }
+            else if (key.Key is ConsoleKey.Tab && IsShift(key))
+            {
+                _session.ShiftTab();
+            }
             else if (key.Key is ConsoleKey.Tab)
             {
                 _session.Tab();

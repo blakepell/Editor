@@ -698,9 +698,105 @@ namespace NEdit.Editor
         public void Enter() => InsertText("\n");
 
         /// <summary>
-        /// Inserts spaces for one configured tab stop at the cursor.
+        /// Inserts spaces for one configured tab stop at the cursor, or indents all selected lines.
         /// </summary>
-        public void Tab() => InsertText(new string(' ', Options.TabSize));
+        public void Tab()
+        {
+            if (SelectionRange is (Position selStart, Position selEnd) && selStart.Line != selEnd.Line)
+            {
+                IndentSelectedLines();
+            }
+            else
+            {
+                InsertText(new string(' ', Options.TabSize));
+            }
+        }
+
+        /// <summary>
+        /// Unindents all selected lines by one tab stop.
+        /// </summary>
+        public void ShiftTab()
+        {
+            if (SelectionRange is (Position selStart, Position selEnd) && selStart.Line != selEnd.Line)
+            {
+                UnindentSelectedLines();
+            }
+        }
+
+        private void IndentSelectedLines()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            var range = SelectionRange!.Value;
+            int startLine = range.Start.Line;
+            int endLine = range.End.Line;
+            string indent = new string(' ', Options.TabSize);
+
+            WithUndo(() =>
+            {
+                for (int i = startLine; i <= endLine; i++)
+                {
+                    Document.InsertText(new Position(i, 0), indent);
+                }
+                Cursor = new Position(Cursor.Line, Cursor.Column + Options.TabSize);
+                if (Selection is Position mark)
+                {
+                    Selection = new Position(mark.Line, mark.Column + Options.TabSize);
+                }
+            });
+        }
+
+        private void UnindentSelectedLines()
+        {
+            if (IsReadOnly)
+            {
+                ReadOnlyWarning();
+                return;
+            }
+
+            var range = SelectionRange!.Value;
+            int startLine = range.Start.Line;
+            int endLine = range.End.Line;
+            int tabSize = Options.TabSize;
+            int[] removed = new int[endLine - startLine + 1];
+
+            for (int i = startLine; i <= endLine; i++)
+            {
+                string line = Document.LineAt(i).ToString();
+                int spaces = 0;
+                while (spaces < line.Length && line[spaces] == ' ' && spaces < tabSize)
+                {
+                    spaces++;
+                }
+                removed[i - startLine] = spaces;
+            }
+
+            if (removed.All(r => r == 0))
+            {
+                return;
+            }
+
+            WithUndo(() =>
+            {
+                for (int i = startLine; i <= endLine; i++)
+                {
+                    int r = removed[i - startLine];
+                    if (r > 0)
+                    {
+                        Document.DeleteRange(new Position(i, 0), new Position(i, r));
+                    }
+                }
+                Cursor = new Position(Cursor.Line, Math.Max(0, Cursor.Column - removed[Cursor.Line - startLine]));
+                if (Selection is Position mark)
+                {
+                    Selection = new Position(mark.Line, Math.Max(0, mark.Column - removed[mark.Line - startLine]));
+                }
+            });
+        }
 
         /// <summary>
         /// Deletes the character before the cursor or the active selection.
